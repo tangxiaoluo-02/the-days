@@ -1,0 +1,247 @@
+// ── Google Drive API 操作模組 ──
+const Drive = (() => {
+  const BASE = 'https://www.googleapis.com/drive/v3';
+  const UPLOAD = 'https://www.googleapis.com/upload/drive/v3';
+
+  let rootFolderId    = null;
+  let entriesFolderId = null;
+  let photosFolderId  = null;
+  let trashFolderId   = null;
+
+  // 快取已下載的照片 blob URL
+  const photoCache = new Map();
+
+  // ── 基礎請求 ──
+  async function req(url, options = {}) {
+    const token = await Auth.getToken();
+    const resp = await fetch(url, {
+      ...options,
+      headers: {
+        Authorization: `Bearer ${token}`,
+        ...(options.headers || {}),
+      },
+    });
+    if (!resp.ok) {
+      const err = await resp.json().catch(() => ({}));
+      throw new Error(err.error?.message || `HTTP ${resp.status}`);
+    }
+    if (resp.status === 204) return null;
+    return resp.json();
+  }
+
+  async function reqMedia(url) {
+    const token = await Auth.getToken();
+    const resp = await fetch(url, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+    return resp.blob();
+  }
+
+  // ── 資料夾操作 ──
+  async function findOrCreateFolder(name, parentId = null) {
+    const q = parentId
+      ? `name='${name}' and mimeType='application/vnd.google-apps.folder' and '${parentId}' in parents and trashed=false`
+      : `name='${name}' and mimeType='application/vnd.google-apps.folder' and 'root' in parents and trashed=false`;
+
+    const res = await req(`${BASE}/files?q=${encodeURIComponent(q)}&fields=files(id,name)&spaces=drive`);
+    if (res.files.length > 0) return res.files[0].id;
+
+    const body = {
+      name,
+      mimeType: 'application/vnd.google-apps.folder',
+    };
+    if (parentId) body.parents = [parentId];
+
+    const created = await req(`${BASE}/files`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    return created.id;
+  }
+
+  async function init() {
+    rootFolderId    = await findOrCreateFolder(CONFIG.DRIVE_FOLDER_NAME);
+    entriesFolderId = await findOrCreateFolder('entries', rootFolderId);
+    photosFolderId  = await findOrCreateFolder('photos',  rootFolderId);
+    trashFolderId   = await findOrCreateFolder('trash',   rootFolderId);
+  }
+
+  // ── 取得或建立月份子資料夾 ──
+  async function getMonthFolder(parentId, yearMonth) {
+    return findOrCreateFolder(yearMonth, parentId);
+  }
+
+  // ── JSON 檔案操作 ──
+  async function readJson(fileId) {
+    const blob = await reqMedia(`${BASE}/files/${fileId}?alt=media`);
+    const text = await blob.text();
+    return JSON.parse(text);
+  }
+
+  async function writeJson(name, data, folderId, existingFileId = null) {
+    const content = JSON.stringify(data, null, 2);
+    const blob = new Blob([content], { type: 'application/json' });
+
+    if (existingFileId) {
+      return updateFile(existingFileId, blob, 'application/json');
+    }
+
+    return uploadFile(name, blob, 'application/json', folderId);
+  }
+
+  async function uploadFile(name, blob, mimeType, folderId) {
+    const metadata = { name, parents: [folderId] };
+    const form = new FormData();
+    form.append('metadata', new Blob([JSON.stringify(metadata)], { type: 'application/json' }));
+    form.append('file', blob);
+
+    const token = await Auth.getToken();
+    const resp = await fetch(`${UPLOAD}/files?uploadType=multipart&fields=id,name,size`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}` },
+      body: form,
+    });
+    if (!resp.ok) throw new Error(`Upload failed: ${resp.status}`);
+    return resp.json();
+  }
+
+  async function updateFile(fileId, blob, mimeType) {
+    const token = await Auth.getToken();
+    const resp = await fetch(`${UPLOAD}/files/${fileId}?uploadType=media`, {
+      method: 'PATCH',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': mimeType,
+      },
+      body: blob,
+    });
+    if (!resp.ok) throw new Error(`Update failed: ${resp.status}`);
+    return resp.json();
+  }
+
+  async function deleteFile(fileId) {
+    await req(`${BASE}/files/${fileId}`, { method: 'DELETE' });
+  }
+
+  async function listFiles(folderId, fields = 'files(id,name,createdTime,size)') {
+    const q = encodeURIComponent(`'${folderId}' in parents and trashed=false`);
+    const res = await req(`${BASE}/files?q=${q}&fields=${fields}&pageSize=1000&orderBy=createdTime`);
+    return res.files;
+  }
+
+  async function findFile(name, folderId) {
+    const q = encodeURIComponent(`name='${name}' and '${folderId}' in parents and trashed=false`);
+    const res = await req(`${BASE}/files?q=${q}&fields=files(id,name)&pageSize=1`);
+    return res.files[0] || null;
+  }
+
+  // ── 照片操作 ──
+  async function uploadPhoto(file, yearMonth) {
+    const folderId = await getMonthFolder(photosFolderId, yearMonth);
+    const uploaded = await uploadFile(file.name, file, file.type, folderId);
+    return uploaded.id;
+  }
+
+  async function getPhotoUrl(fileId) {
+    if (photoCache.has(fileId)) return photoCache.get(fileId);
+    const blob = await reqMedia(`${BASE}/files/${fileId}?alt=media`);
+    const url = URL.createObjectURL(blob);
+    photoCache.set(fileId, url);
+    return url;
+  }
+
+  // ── index.json 操作 ──
+  let indexFileId = null;
+
+  async function loadIndex() {
+    const file = await findFile('index.json', rootFolderId);
+    if (!file) {
+      return { entries: [], last_updated: new Date().toISOString() };
+    }
+    indexFileId = file.id;
+    return readJson(file.id);
+  }
+
+  async function saveIndex(data) {
+    data.last_updated = new Date().toISOString();
+    const result = await writeJson('index.json', data, rootFolderId, indexFileId);
+    if (!indexFileId) indexFileId = result.id;
+  }
+
+  // ── tags.json 操作 ──
+  let tagsFileId = null;
+
+  async function loadTags() {
+    const file = await findFile('tags.json', rootFolderId);
+    if (!file) return { tags: [] };
+    tagsFileId = file.id;
+    return readJson(file.id);
+  }
+
+  async function saveTags(data) {
+    const result = await writeJson('tags.json', data, rootFolderId, tagsFileId);
+    if (!tagsFileId) tagsFileId = result.id;
+  }
+
+  // ── 日記 entry 操作 ──
+  async function saveEntry(entry) {
+    const yearMonth = entry.created_at.slice(0, 7);
+    const folderId  = await getMonthFolder(entriesFolderId, yearMonth);
+    const filename  = `${entry.id}.json`;
+
+    const existing = await findFile(filename, folderId);
+    const result = await writeJson(filename, entry, folderId, existing?.id);
+    return result.id;
+  }
+
+  async function loadEntry(entryFileId) {
+    return readJson(entryFileId);
+  }
+
+  async function moveToTrash(entry, driveFileId) {
+    const trashEntry = { ...entry, deleted_at: new Date().toISOString(), original_drive_id: driveFileId };
+    const result = await writeJson(`${entry.id}.json`, trashEntry, trashFolderId);
+
+    // 刪除原始檔案
+    if (driveFileId) await deleteFile(driveFileId);
+    return result.id;
+  }
+
+  async function loadTrash() {
+    const files = await listFiles(trashFolderId);
+    const entries = [];
+    for (const f of files) {
+      try {
+        const data = await readJson(f.id);
+        data._trash_file_id = f.id;
+        entries.push(data);
+      } catch (e) { /* skip */ }
+    }
+    return entries;
+  }
+
+  async function restoreFromTrash(trashEntry) {
+    const { _trash_file_id, ...entry } = trashEntry;
+    delete entry.deleted_at;
+    delete entry.original_drive_id;
+    const driveId = await saveEntry(entry);
+    await deleteFile(_trash_file_id);
+    return { entry, driveId };
+  }
+
+  async function deleteFromTrash(trashFileId) {
+    await deleteFile(trashFileId);
+  }
+
+  return {
+    init,
+    readJson, writeJson,
+    uploadPhoto, getPhotoUrl,
+    loadIndex, saveIndex,
+    loadTags, saveTags,
+    saveEntry, loadEntry,
+    moveToTrash, loadTrash, restoreFromTrash, deleteFromTrash,
+  };
+})();

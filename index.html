@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>The Days</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- ── 登入畫面 ── -->
+  <div id="login-screen">
+    <div class="login-box">
+      <div class="login-icon">🌅</div>
+      <h1>The Days</h1>
+      <p>你的私人日記空間</p>
+      <button id="login-btn">以 Google 帳號登入</button>
+    </div>
+  </div>
+
+  <!-- ── 主應用畫面 ── -->
+  <div id="app-screen" class="hidden">
+
+    <!-- 頂部導航 -->
+    <header id="app-header">
+      <div class="header-left">
+        <span class="app-logo">🌅</span>
+        <span class="app-title">The Days</span>
+      </div>
+      <div class="header-center">
+        <div class="view-tabs">
+          <button class="tab active" data-view="timeline">時間軸</button>
+          <button class="tab" data-view="calendar">月曆</button>
+          <button class="tab" data-view="gallery">畫廊</button>
+        </div>
+      </div>
+      <div class="header-right">
+        <button id="search-btn" title="搜尋">🔍</button>
+        <button id="stats-btn" title="寫作統計">📊</button>
+        <button id="tags-btn" title="標籤管理">🏷️</button>
+        <button id="trash-btn" title="回收桶">🗑️</button>
+        <div id="user-info">
+          <img id="user-avatar" src="" alt="">
+          <span id="user-name"></span>
+        </div>
+        <button id="logout-btn">登出</button>
+      </div>
+    </header>
+
+    <!-- 主內容 -->
+    <main id="main-content">
+
+      <!-- 時間軸視圖 -->
+      <div id="timeline-view" class="view">
+        <div class="view-toolbar">
+          <button id="collapse-all-btn">全部折疊</button>
+          <button id="expand-all-btn">全部展開</button>
+        </div>
+        <div id="timeline-container"></div>
+        <div id="timeline-empty" class="empty-state hidden">
+          <div class="empty-icon">📖</div>
+          <p>還沒有日記，點右下角 + 開始記錄吧！</p>
+        </div>
+      </div>
+
+      <!-- 月曆視圖 -->
+      <div id="calendar-view" class="view hidden">
+        <div id="calendar-header">
+          <button id="cal-prev">‹</button>
+          <h2 id="cal-title"></h2>
+          <button id="cal-next">›</button>
+          <button id="cal-today">今天</button>
+        </div>
+        <div id="calendar-grid"></div>
+        <div id="day-entries-panel" class="hidden">
+          <div id="day-entries-title"></div>
+          <div id="day-entries-list"></div>
+        </div>
+      </div>
+
+      <!-- 畫廊視圖 -->
+      <div id="gallery-view" class="view hidden">
+        <div id="gallery-container"></div>
+        <div id="gallery-empty" class="empty-state hidden">
+          <div class="empty-icon">🖼️</div>
+          <p>還沒有附帶照片的日記</p>
+        </div>
+      </div>
+
+    </main>
+
+    <!-- 新增日記按鈕 -->
+    <button id="new-entry-btn" title="新增日記">＋</button>
+
+  </div>
+
+  <!-- ══════════════════════════════════════
+       模態框：日記編輯器
+  ══════════════════════════════════════ -->
+  <div id="editor-modal" class="modal hidden">
+    <div class="modal-backdrop"></div>
+    <div class="modal-box editor-box">
+      <div class="modal-header">
+        <h3 id="editor-title">新增日記</h3>
+        <button class="modal-close" data-modal="editor-modal">✕</button>
+      </div>
+
+      <!-- 時間列 -->
+      <div class="editor-meta">
+        <div class="meta-item">
+          <label>時間</label>
+          <input type="datetime-local" id="entry-datetime">
+          <button id="reset-time-btn" title="重設為現在時間">⟳</button>
+        </div>
+        <div class="meta-item" id="weather-display">
+          <label>天氣</label>
+          <span id="weather-info">—</span>
+          <button id="fetch-weather-btn" title="取得當前天氣">🌤</button>
+        </div>
+        <div class="meta-item" id="location-display">
+          <label>位置</label>
+          <span id="location-info">—</span>
+          <button id="fetch-location-btn" title="取得當前位置">📍</button>
+        </div>
+      </div>
+
+      <!-- 標籤列 -->
+      <div class="editor-tags">
+        <label>標籤</label>
+        <div id="selected-tags"></div>
+        <div class="tag-picker-wrapper">
+          <button id="add-tag-btn">+ 選擇標籤</button>
+          <div id="tag-picker" class="tag-picker hidden"></div>
+        </div>
+      </div>
+
+      <!-- Markdown 工具列 -->
+      <div class="editor-toolbar">
+        <button data-action="bold" title="粗體">B</button>
+        <button data-action="italic" title="斜體"><i>I</i></button>
+        <button data-action="heading" title="標題">H</button>
+        <button data-action="ul" title="無序清單">≡</button>
+        <button data-action="ol" title="有序清單">1.</button>
+        <button data-action="quote" title="引用">❝</button>
+        <button data-action="hr" title="分隔線">─</button>
+        <span class="toolbar-sep">|</span>
+        <label class="color-btn" title="文字顏色">
+          🎨
+          <input type="color" id="font-color-picker" value="#8B6914">
+        </label>
+        <button data-action="preview" id="preview-toggle-btn" title="切換預覽">👁</button>
+      </div>
+
+      <!-- 編輯區 -->
+      <div id="editor-area">
+        <textarea id="entry-content" placeholder="今天發生了什麼…&#10;&#10;支援 Markdown 格式，也可以用工具列輔助&#10;貼上網址會自動變成超連結"></textarea>
+        <div id="entry-preview" class="markdown-body hidden"></div>
+      </div>
+
+      <!-- 照片區 -->
+      <div class="editor-photos">
+        <label>照片</label>
+        <div id="photo-list"></div>
+        <label id="add-photo-btn">
+          + 新增照片
+          <input type="file" id="photo-input" accept="image/*" multiple hidden>
+        </label>
+      </div>
+
+      <div class="modal-footer">
+        <button class="btn-ghost" data-modal="editor-modal">取消</button>
+        <button id="save-entry-btn" class="btn-primary">儲存日記</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════
+       模態框：日記查看
+  ══════════════════════════════════════ -->
+  <div id="view-modal" class="modal hidden">
+    <div class="modal-backdrop"></div>
+    <div class="modal-box view-box">
+      <div class="modal-header">
+        <div id="view-datetime" class="view-meta-time"></div>
+        <div class="modal-header-actions">
+          <button id="edit-entry-btn" title="編輯">✏️</button>
+          <button id="delete-entry-btn" title="刪除">🗑️</button>
+          <button class="modal-close" data-modal="view-modal">✕</button>
+        </div>
+      </div>
+      <div id="view-tags" class="view-tags"></div>
+      <div id="view-meta" class="view-meta"></div>
+      <div id="view-content" class="markdown-body"></div>
+      <div id="view-photos" class="view-photos"></div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════
+       模態框：搜尋
+  ══════════════════════════════════════ -->
+  <div id="search-modal" class="modal hidden">
+    <div class="modal-backdrop"></div>
+    <div class="modal-box search-box">
+      <div class="modal-header">
+        <h3>搜尋日記</h3>
+        <button class="modal-close" data-modal="search-modal">✕</button>
+      </div>
+      <div class="search-input-area">
+        <input type="text" id="search-input" placeholder="輸入關鍵字，支援 AND / OR / NOT">
+        <button id="do-search-btn" class="btn-primary">搜尋</button>
+      </div>
+      <div class="search-filters">
+        <label><input type="checkbox" id="filter-has-photo"> 只顯示有照片的</label>
+        <label><input type="checkbox" id="filter-has-link"> 只顯示有超連結的</label>
+        <div class="search-tag-filter">
+          <span>標籤篩選：</span>
+          <div id="search-tag-list"></div>
+        </div>
+      </div>
+      <div id="search-results"></div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════
+       模態框：標籤管理
+  ══════════════════════════════════════ -->
+  <div id="tags-modal" class="modal hidden">
+    <div class="modal-backdrop"></div>
+    <div class="modal-box tags-box">
+      <div class="modal-header">
+        <h3>標籤管理</h3>
+        <button class="modal-close" data-modal="tags-modal">✕</button>
+      </div>
+      <div class="tags-add-area">
+        <input type="text" id="new-tag-name" placeholder="標籤名稱">
+        <select id="new-tag-parent">
+          <option value="">（頂層標籤）</option>
+        </select>
+        <input type="color" id="new-tag-color" value="#8B6914" title="標籤顏色">
+        <button id="add-tag-submit-btn" class="btn-primary">新增</button>
+      </div>
+      <div id="tags-tree"></div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════
+       模態框：寫作統計
+  ══════════════════════════════════════ -->
+  <div id="stats-modal" class="modal hidden">
+    <div class="modal-backdrop"></div>
+    <div class="modal-box stats-box">
+      <div class="modal-header">
+        <h3>寫作統計</h3>
+        <button class="modal-close" data-modal="stats-modal">✕</button>
+      </div>
+      <div id="stats-content"></div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════
+       模態框：回收桶
+  ══════════════════════════════════════ -->
+  <div id="trash-modal" class="modal hidden">
+    <div class="modal-backdrop"></div>
+    <div class="modal-box trash-box">
+      <div class="modal-header">
+        <h3>回收桶 <small>（刪除後保留 30 天）</small></h3>
+        <button class="modal-close" data-modal="trash-modal">✕</button>
+      </div>
+      <div id="trash-list"></div>
+      <div id="trash-empty" class="empty-state hidden">
+        <div class="empty-icon">✨</div>
+        <p>回收桶是空的</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- 照片放大燈箱 -->
+  <div id="lightbox" class="hidden">
+    <div id="lightbox-backdrop"></div>
+    <button id="lightbox-prev">‹</button>
+    <img id="lightbox-img" src="" alt="">
+    <button id="lightbox-next">›</button>
+    <button id="lightbox-close">✕</button>
+  </div>
+
+  <!-- Toast 通知 -->
+  <div id="toast-container"></div>
+
+  <!-- 載入指示 -->
+  <div id="loading-overlay" class="hidden">
+    <div class="loading-spinner"></div>
+    <p id="loading-text">載入中…</p>
+  </div>
+
+  <!-- ── JavaScript ── -->
+  <script src="https://accounts.google.com/gsi/client" async></script>
+  <script src="https://apis.google.com/js/api.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/exifr/dist/full.umd.js"></script>
+  <script src="js/config.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/drive.js"></script>
+  <script src="js/entry.js"></script>
+  <script src="js/editor.js"></script>
+  <script src="js/timeline.js"></script>
+  <script src="js/calendar.js"></script>
+  <script src="js/gallery.js"></script>
+  <script src="js/tags.js"></script>
+  <script src="js/search.js"></script>
+  <script src="js/weather.js"></script>
+  <script src="js/stats.js"></script>
+  <script src="js/app.js"></script>
+
+</body>
+</html>
