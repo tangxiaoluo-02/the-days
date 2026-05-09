@@ -584,10 +584,17 @@ img { max-width: 100%; display: block; }
 }
 
 /* ── Editor area ── */
-#editor-area { flex: 1; min-height: 0; }
+#editor-area {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
 #entry-content {
   width: 100%;
-  min-height: 220px;
+  flex: 1;
+  min-height: 180px;
   max-height: 380px;
   padding: 16px 20px;
   border: none;
@@ -599,7 +606,8 @@ img { max-width: 100%; display: block; }
 }
 #entry-preview {
   padding: 16px 20px;
-  min-height: 220px;
+  min-height: 180px;
+  flex: 1;
 }
 
 /* ── Photos ── */
@@ -1002,6 +1010,26 @@ img { max-width: 100%; display: block; }
   .header-center { display: none; }
   #main-content { padding: 16px 12px 80px; }
   .modal { padding: 0; align-items: flex-end; }
-  .modal-box { border-radius: 16px 16px 0 0; max-height: 95vh; }
+  .modal-box {
+    border-radius: 16px 16px 0 0;
+    height: 95dvh;
+    max-height: 95dvh;
+  }
+  .editor-box {
+    display: flex;
+    flex-direction: column;
+  }
+  #editor-area {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+  }
+  #entry-content {
+    min-height: 100px;
+    max-height: none;
+    resize: none;
+  }
   .editor-meta { flex-direction: column; }
+  .editor-photos { flex-shrink: 0; }
+  .modal-footer { flex-shrink: 0; }
 }
