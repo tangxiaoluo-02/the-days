@@ -1014,22 +1014,25 @@ img { max-width: 100%; display: block; }
     border-radius: 16px 16px 0 0;
     height: 95dvh;
     max-height: 95dvh;
+    overflow: hidden;
   }
-  .editor-box {
-    display: flex;
-    flex-direction: column;
-  }
+  /* 讓編輯器內各固定區塊不縮小 */
+  .modal-header,
+  .editor-meta,
+  .editor-tags,
+  .editor-toolbar,
+  .editor-photos,
+  .modal-footer { flex-shrink: 0; }
+  /* 讓文字區塊填滿剩餘空間並可捲動 */
   #editor-area {
     flex: 1;
     min-height: 0;
     overflow-y: auto;
   }
   #entry-content {
-    min-height: 100px;
+    min-height: 100%;
     max-height: none;
     resize: none;
   }
   .editor-meta { flex-direction: column; }
-  .editor-photos { flex-shrink: 0; }
-  .modal-footer { flex-shrink: 0; }
 }

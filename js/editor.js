@@ -269,6 +269,12 @@ const Editor = (() => {
     const picker = document.getElementById('tag-picker');
     picker.innerHTML = '';
     const flat = TagManager.getFlat();
+    if (!flat.length) {
+      const hint = document.createElement('div');
+      hint.style.cssText = 'font-size:12px;color:var(--text-3);padding:6px 8px';
+      hint.textContent = '尚無標籤，請先新增';
+      picker.appendChild(hint);
+    }
     for (const tag of flat) {
       const item = document.createElement('div');
       item.className = 'tag-picker-item' + (selectedTags.includes(tag.id) ? ' selected' : '');
@@ -295,6 +301,33 @@ const Editor = (() => {
       };
       picker.appendChild(item);
     }
+
+    // 直接新增標籤的快速輸入列
+    const addRow = document.createElement('div');
+    addRow.style.cssText = 'display:flex;gap:4px;padding:6px 4px;border-top:1px solid var(--border);margin-top:4px';
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.placeholder = '新增標籤…';
+    input.style.cssText = 'flex:1;border:1px solid var(--border);border-radius:4px;padding:3px 7px;font-size:12px;outline:none';
+    const addBtn = document.createElement('button');
+    addBtn.textContent = '＋';
+    addBtn.style.cssText = 'padding:3px 8px;background:var(--primary);color:#fff;border-radius:4px;font-size:13px';
+    addBtn.onclick = async (e) => {
+      e.stopPropagation();
+      const name = input.value.trim();
+      if (!name) return;
+      const id = await TagManager.add(name, null, '#8B6914');
+      selectedTags.push(id);
+      input.value = '';
+      renderTagPicker();
+      renderSelectedTags();
+    };
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') { e.preventDefault(); addBtn.click(); }
+    });
+    addRow.appendChild(input);
+    addRow.appendChild(addBtn);
+    picker.appendChild(addRow);
   }
 
   // ── 儲存 ──
