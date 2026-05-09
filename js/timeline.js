@@ -33,6 +33,8 @@ const Timeline = (() => {
   }
 
   function renderDay(dateKey, entries) {
+    // 同一天內舊的在上
+    entries.sort((a, b) => a.created_at.localeCompare(b.created_at));
     const wrap = document.createElement('div');
     wrap.className = 'timeline-day';
     wrap.dataset.date = dateKey;

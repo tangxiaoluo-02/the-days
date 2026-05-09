@@ -30,6 +30,12 @@ const TagManager = (() => {
   function getById(id) { return tags.find(t => t.id === id); }
 
   async function add(name, parentId, color) {
+    // 防呆：同名同層不重複建立
+    const existing = tags.find(t =>
+      t.name === name && t.parent_id === (parentId || null)
+    );
+    if (existing) return existing.id;
+
     const id = 'tag_' + Date.now();
     const order = tags.filter(t => t.parent_id === (parentId || null)).length;
     tags.push({ id, name, parent_id: parentId || null, color: color || '#8B6914', order });

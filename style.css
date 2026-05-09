@@ -859,6 +859,46 @@ img { max-width: 100%; display: block; }
 }
 .trash-restore-btn:hover { background: var(--success); color: #fff; }
 
+/* ── # Mention 標籤選取器 ── */
+.mention-picker {
+  position: fixed;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  min-width: 180px;
+  max-height: 200px;
+  overflow-y: auto;
+  z-index: 300;
+  padding: 4px;
+}
+.mention-item {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 6px 10px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-size: 13px;
+  transition: background 0.15s;
+}
+.mention-item:hover,
+.mention-item.active { background: var(--surface-2); }
+.mention-empty {
+  padding: 8px 10px;
+  font-size: 12px;
+  color: var(--text-3);
+}
+.mention-create {
+  padding: 6px 10px;
+  font-size: 12px;
+  color: var(--primary);
+  cursor: pointer;
+  border-top: 1px solid var(--border);
+  border-radius: 0 0 var(--radius-sm) var(--radius-sm);
+}
+.mention-create:hover { background: var(--surface-2); }
+
 /* ── 燈箱 ── */
 #lightbox {
   position: fixed;

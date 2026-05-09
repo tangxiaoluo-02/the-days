@@ -56,6 +56,7 @@ const Editor = (() => {
 
     openModal('editor-modal');
     textarea().focus();
+    bindMentionTrigger();
   }
 
   // ── 轉換時間為 <input datetime-local> 格式 ──
@@ -113,6 +114,128 @@ const Editor = (() => {
     const sel   = ta.value.slice(start, end) || '文字';
     const html  = `<span style="color:${color}">${sel}</span>`;
     insertAt(ta, start, end, html);
+  }
+
+  // ── # Mention 標籤觸發 ──
+  let mentionStart = -1;
+
+  function bindMentionTrigger() {
+    const ta = textarea();
+    ta.addEventListener('input', onMentionInput);
+    ta.addEventListener('keydown', onMentionKeydown);
+    document.addEventListener('click', hideMention);
+  }
+
+  function onMentionInput() {
+    const ta = textarea();
+    const pos = ta.selectionStart;
+    const before = ta.value.slice(0, pos);
+    const match = before.match(/#([^#\n]*)$/);
+    if (match) {
+      mentionStart = pos - match[0].length;
+      showMention(match[1]);
+    } else {
+      hideMention();
+    }
+  }
+
+  function onMentionKeydown(e) {
+    const picker = document.getElementById('mention-picker');
+    if (picker.classList.contains('hidden')) return;
+    const items = picker.querySelectorAll('.mention-item');
+    let active = picker.querySelector('.mention-item.active');
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      if (!active) { items[0]?.classList.add('active'); return; }
+      active.classList.remove('active');
+      const next = active.nextElementSibling;
+      (next?.classList.contains('mention-item') ? next : items[0])?.classList.add('active');
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      if (!active) { items[items.length-1]?.classList.add('active'); return; }
+      active.classList.remove('active');
+      const prev = active.previousElementSibling;
+      (prev?.classList.contains('mention-item') ? prev : items[items.length-1])?.classList.add('active');
+    } else if (e.key === 'Enter' && active) {
+      e.preventDefault();
+      active.click();
+    } else if (e.key === 'Escape') {
+      hideMention();
+    }
+  }
+
+  function showMention(query) {
+    const picker = document.getElementById('mention-picker');
+    picker.innerHTML = '';
+    const all = TagManager.getFlat();
+    const filtered = query
+      ? all.filter(t => t.name.toLowerCase().includes(query.toLowerCase()))
+      : all;
+
+    if (!filtered.length && !query) {
+      const empty = document.createElement('div');
+      empty.className = 'mention-empty';
+      empty.textContent = '尚無標籤';
+      picker.appendChild(empty);
+    }
+
+    for (const tag of filtered.slice(0, 8)) {
+      const item = document.createElement('div');
+      item.className = 'mention-item';
+      const dot = document.createElement('span');
+      dot.className = 'tag-color-dot';
+      dot.style.background = tag.color;
+      const name = document.createElement('span');
+      name.textContent = '#' + tag.name;
+      item.appendChild(dot);
+      item.appendChild(name);
+      item.addEventListener('mousedown', (e) => {
+        e.preventDefault();
+        insertMention(tag);
+      });
+      picker.appendChild(item);
+    }
+
+    // 若沒有完全匹配，提供「建立新標籤」
+    if (query && !all.find(t => t.name === query)) {
+      const create = document.createElement('div');
+      create.className = 'mention-create';
+      create.textContent = `＋ 建立標籤「${query}」`;
+      create.addEventListener('mousedown', async (e) => {
+        e.preventDefault();
+        const id = await TagManager.add(query, null, '#8B6914');
+        const newTag = TagManager.getAll().find(t => t.id === id);
+        if (newTag) insertMention(newTag);
+      });
+      picker.appendChild(create);
+    }
+
+    // 定位選取器在游標附近
+    const ta = textarea();
+    const rect = ta.getBoundingClientRect();
+    picker.style.left = rect.left + 'px';
+    picker.style.top  = (rect.bottom + 4) + 'px';
+    picker.classList.remove('hidden');
+  }
+
+  function hideMention() {
+    document.getElementById('mention-picker').classList.add('hidden');
+    mentionStart = -1;
+  }
+
+  function insertMention(tag) {
+    const ta = textarea();
+    const pos = ta.selectionStart;
+    const before = ta.value.slice(0, mentionStart);
+    const after  = ta.value.slice(pos);
+    ta.value = before + '#' + tag.name + ' ' + after;
+    ta.selectionStart = ta.selectionEnd = mentionStart + tag.name.length + 2;
+    if (!selectedTags.includes(tag.id)) {
+      selectedTags.push(tag.id);
+      renderSelectedTags();
+    }
+    hideMention();
+    ta.focus();
   }
 
   // ── 切換預覽 ──
