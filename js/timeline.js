@@ -28,8 +28,8 @@ const Timeline = (() => {
       if (!map.has(dateKey)) map.set(dateKey, []);
       map.get(dateKey).push(e);
     }
-    // 按日期降序
-    return new Map([...map.entries()].sort((a, b) => b[0].localeCompare(a[0])));
+    // 按日期升序（舊的在上）
+    return new Map([...map.entries()].sort((a, b) => a[0].localeCompare(b[0])));
   }
 
   function renderDay(dateKey, entries) {

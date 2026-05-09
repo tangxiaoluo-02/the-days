@@ -124,6 +124,10 @@ const App = (() => {
       e.stopPropagation();
       Editor.openTagPicker();
     });
+    // tag-picker 內部點擊不關閉（輸入框才能正常使用）
+    document.getElementById('tag-picker').addEventListener('click', (e) => {
+      e.stopPropagation();
+    });
     document.addEventListener('click', () => {
       document.getElementById('tag-picker').classList.add('hidden');
     });
