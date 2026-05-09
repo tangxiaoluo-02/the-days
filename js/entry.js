@@ -20,16 +20,17 @@ const EntryManager = (() => {
     });
   }
 
-  // ── 從內容提取純文字（去 Markdown） ──
+  // ── 從內容提取純文字（去 Markdown，保留換行）──
   function plainText(md) {
     return md
-      .replace(/#{1,6}\s+/g, '')
-      .replace(/\*\*(.+?)\*\*/g, '$1')
-      .replace(/\*(.+?)\*/g, '$1')
-      .replace(/`(.+?)`/g, '$1')
-      .replace(/\[(.+?)\]\(.+?\)/g, '$1')
-      .replace(/^>\s+/gm, '')
-      .replace(/<[^>]+>/g, '')
+      .replace(/#{1,6}\s+/g, '')          // 移除標題 #
+      .replace(/\*\*(.+?)\*\*/g, '$1')    // 移除粗體
+      .replace(/\*(.+?)\*/g, '$1')        // 移除斜體
+      .replace(/`(.+?)`/g, '$1')          // 移除行內程式碼
+      .replace(/\[(.+?)\]\(.+?\)/g, '$1') // 移除連結，保留文字
+      .replace(/^>\s+/gm, '')             // 移除引用符號
+      .replace(/<[^>]+>/g, '')            // 移除 HTML 標籤
+      .replace(/\r\n/g, '\n')             // 統一換行符
       .trim();
   }
 

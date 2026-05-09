@@ -149,22 +149,15 @@ const Timeline = (() => {
   }
 
   function collapseAll() {
-    document.querySelectorAll('.timeline-day-entries').forEach(el => {
-      el.style.display = 'none';
-    });
-    document.querySelectorAll('.day-toggle').forEach(el => {
-      el.textContent = '▸';
-    });
+    // 日期組維持展開，但每則日記壓縮成一行
+    document.querySelectorAll('.entry-card').forEach(el => el.classList.add('collapsed'));
+    document.querySelectorAll('.timeline-day-entries').forEach(el => { el.style.display = ''; });
+    document.querySelectorAll('.day-toggle').forEach(el => { el.textContent = '▾'; });
     allCollapsed = true;
   }
 
   function expandAll() {
-    document.querySelectorAll('.timeline-day-entries').forEach(el => {
-      el.style.display = '';
-    });
-    document.querySelectorAll('.day-toggle').forEach(el => {
-      el.textContent = '▾';
-    });
+    document.querySelectorAll('.entry-card').forEach(el => el.classList.remove('collapsed'));
     allCollapsed = false;
   }
 

@@ -243,11 +243,20 @@ img { max-width: 100%; display: block; }
 .entry-card-preview {
   font-size: 14px;
   color: var(--text);
+  white-space: pre-line;
   display: -webkit-box;
-  -webkit-line-clamp: 3;
+  -webkit-line-clamp: 4;
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
+/* 折疊狀態：只顯示一行 */
+.entry-card.collapsed .entry-card-preview {
+  -webkit-line-clamp: 1;
+  white-space: nowrap;
+}
+.entry-card.collapsed .entry-card-tags,
+.entry-card.collapsed .entry-card-photos,
+.entry-card.collapsed .entry-card-meta { display: none; }
 .entry-card-photos {
   display: flex;
   gap: 6px;
@@ -1047,38 +1056,51 @@ img { max-width: 100%; display: block; }
 
 /* ── 響應式 ── */
 @media (max-width: 640px) {
-  .header-center { display: none; }
+  /* 視圖切換：縮小以適應手機 */
+  .header-center { display: flex; }
+  .app-title { display: none; }
+  .view-tabs .tab { padding: 5px 10px; font-size: 12px; }
+
   #main-content { padding: 16px 12px 80px; }
+
+  /* 一般 modal：從底部彈出 */
   .modal { padding: 0; align-items: flex-end; }
   .modal-box {
     border-radius: 16px 16px 0 0;
-    height: 95dvh;
-    max-height: 95dvh;
+    max-height: 92dvh;
+    overflow-y: auto;
+  }
+
+  /* Editor modal：全螢幕，避免鍵盤擠壓問題 */
+  #editor-modal {
+    align-items: flex-start;
+    padding: 0;
+  }
+  #editor-modal .modal-box {
+    border-radius: 0;
+    height: 100dvh;
+    max-height: 100dvh;
     overflow: hidden;
   }
-  /* 讓編輯器內各固定區塊不縮小 */
+
+  /* 各固定區塊不縮小 */
   .modal-header,
   .editor-meta,
   .editor-tags,
   .editor-toolbar,
   .editor-photos,
   .modal-footer { flex-shrink: 0; }
-  /* 讓文字區塊填滿剩餘空間並可捲動 */
-  #editor-area {
-    flex: 1;
-    min-height: 0;
-    overflow-y: auto;
-  }
-  #entry-content {
-    min-height: 100%;
-    max-height: none;
-    resize: none;
-  }
+
+  /* 文字區塊填滿剩餘空間 */
+  #editor-area { flex: 1; min-height: 0; overflow-y: auto; }
+  #entry-content { min-height: 100%; max-height: none; resize: none; }
+
+  /* meta 欄位緊湊顯示 */
   .editor-meta {
     flex-direction: column;
-    max-height: 96px;
+    max-height: 90px;
     overflow-y: auto;
-    gap: 6px;
+    gap: 5px;
     padding: 8px 16px;
   }
   .meta-item { font-size: 12px; gap: 4px; }

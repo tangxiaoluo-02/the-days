@@ -495,20 +495,8 @@ const App = (() => {
     document.getElementById('loading-overlay').classList.add('hidden');
   }
 
-  // ── Safari visualViewport 修正（鍵盤彈出時動態調整 modal 高度）──
-  function initViewportFix() {
-    if (!window.visualViewport) return;
-    window.visualViewport.addEventListener('resize', () => {
-      const h = window.visualViewport.height;
-      document.querySelectorAll('.modal-box').forEach(el => {
-        el.style.maxHeight = h * 0.95 + 'px';
-        el.style.height    = h * 0.95 + 'px';
-      });
-    });
-  }
-
   // ── 啟動 ──
-  document.addEventListener('DOMContentLoaded', () => { init(); initViewportFix(); });
+  document.addEventListener('DOMContentLoaded', init);
 
   return { toast, showLoading, hideLoading, refreshCurrentView, viewEntry };
 })();
