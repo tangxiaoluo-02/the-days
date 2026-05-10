@@ -8,8 +8,36 @@ const Drive = (() => {
   let photosFolderId  = null;
   let trashFolderId   = null;
 
-  // 快取已下載的照片 blob URL
+  // 記憶體快取（blob URL）
   const photoCache = new Map();
+
+  // ── IndexedDB 持久快取 ──
+  let photoDB = null;
+  (async () => {
+    try {
+      const req = indexedDB.open('TheDaysPhotos', 1);
+      req.onupgradeneeded = e => e.target.result.createObjectStore('photos');
+      req.onsuccess = e => { photoDB = e.target.result; };
+    } catch(e) {}
+  })();
+
+  async function idbGet(id) {
+    if (!photoDB) return null;
+    return new Promise(res => {
+      try {
+        const r = photoDB.transaction('photos','readonly').objectStore('photos').get(id);
+        r.onsuccess = () => res(r.result || null);
+        r.onerror   = () => res(null);
+      } catch(e) { res(null); }
+    });
+  }
+
+  async function idbPut(id, blob) {
+    if (!photoDB) return;
+    try {
+      photoDB.transaction('photos','readwrite').objectStore('photos').put(blob, id);
+    } catch(e) {}
+  }
 
   // ── 基礎請求 ──
   async function req(url, options = {}) {
@@ -145,8 +173,18 @@ const Drive = (() => {
   }
 
   async function getPhotoUrl(fileId) {
+    // 1. 記憶體快取
     if (photoCache.has(fileId)) return photoCache.get(fileId);
+    // 2. IndexedDB 持久快取
+    const cached = await idbGet(fileId);
+    if (cached) {
+      const url = URL.createObjectURL(cached);
+      photoCache.set(fileId, url);
+      return url;
+    }
+    // 3. 從 Drive 下載，並存入快取
     const blob = await reqMedia(`${BASE}/files/${fileId}?alt=media`);
+    idbPut(fileId, blob); // 存入 IndexedDB（非同步，不等待）
     const url = URL.createObjectURL(blob);
     photoCache.set(fileId, url);
     return url;

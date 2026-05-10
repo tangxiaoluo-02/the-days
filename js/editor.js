@@ -264,6 +264,31 @@ const Editor = (() => {
     return marked.parse(withLinks, { breaks: true, gfm: true });
   }
 
+  // ── 照片壓縮（轉 WebP，縮小至最大 1920px，品質 85%）──
+  async function compressImage(file) {
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.onload = () => {
+        const MAX = 1920;
+        let { width, height } = img;
+        if (width > MAX) { height = Math.round(height * MAX / width); width = MAX; }
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        canvas.getContext('2d').drawImage(img, 0, 0, width, height);
+        canvas.toBlob((blob) => {
+          if (!blob) { resolve(file); return; }
+          const name = file.name.replace(/\.[^.]+$/, '.webp');
+          const compressed = new File([blob], name, { type: 'image/webp' });
+          compressed._exifTime = file._exifTime;
+          resolve(compressed);
+        }, 'image/webp', 0.85);
+      };
+      img.onerror = () => resolve(file); // 壓縮失敗就用原檔
+      img.src = URL.createObjectURL(file);
+    });
+  }
+
   // ── 照片上傳 ──
   async function handlePhotoInput(files) {
     for (const file of files) {
@@ -277,9 +302,13 @@ const Editor = (() => {
 
       file._exifTime = exifTime;
 
-      const previewUrl = URL.createObjectURL(file);
-      pendingPhotos.push({ file, previewUrl, exifTime });
-      addNewPhotoThumb(file, previewUrl, exifTime);
+      // 壓縮照片再使用
+      const compressed = await compressImage(file);
+      compressed._exifTime = exifTime;
+
+      const previewUrl = URL.createObjectURL(compressed);
+      pendingPhotos.push({ file: compressed, previewUrl, exifTime });
+      addNewPhotoThumb(compressed, previewUrl, exifTime);
     }
 
     // 如果有 EXIF 時間，詢問是否使用第一張

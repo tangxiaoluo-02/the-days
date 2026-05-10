@@ -79,19 +79,25 @@ img { max-width: 100%; display: block; }
 #app-header {
   position: fixed;
   top: 0; left: 0; right: 0;
-  height: var(--header-h);
   background: var(--surface);
   border-bottom: 1px solid var(--border);
-  display: flex;
-  align-items: center;
-  padding: 0 20px;
-  gap: 16px;
   z-index: 100;
   box-shadow: 0 1px 4px rgba(61,43,31,0.06);
 }
-.header-left  { display: flex; align-items: center; gap: 8px; flex: 0 0 auto; }
-.header-center { flex: 1; display: flex; justify-content: center; }
-.header-right { display: flex; align-items: center; gap: 8px; flex: 0 0 auto; }
+.header-row1 {
+  display: flex;
+  align-items: center;
+  padding: 0 16px;
+  height: var(--header-h);
+  gap: 8px;
+}
+.header-row2 {
+  display: flex;
+  justify-content: center;
+  padding: 0 16px 8px;
+}
+.header-left  { display: flex; align-items: center; gap: 8px; flex: 1; }
+.header-right { display: flex; align-items: center; gap: 4px; flex: 0 0 auto; }
 
 .app-logo  { font-size: 22px; }
 .app-title { font-size: 17px; font-weight: 700; color: var(--primary); letter-spacing: 0.5px; }
@@ -134,8 +140,8 @@ img { max-width: 100%; display: block; }
 
 /* ── 主內容 ── */
 #main-content {
-  margin-top: var(--header-h);
-  min-height: calc(100vh - var(--header-h));
+  margin-top: calc(var(--header-h) + 36px); /* header 兩行高度 */
+  min-height: calc(100vh - var(--header-h) - 36px);
   padding: 24px 20px 80px;
   max-width: 760px;
   margin-left: auto;
@@ -249,10 +255,25 @@ img { max-width: 100%; display: block; }
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
-/* 折疊狀態：只顯示一行 */
+/* 折疊狀態：只顯示加粗第一行 */
+.entry-card.collapsed {
+  padding: 10px 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.entry-card.collapsed .entry-card-time {
+  margin-bottom: 0;
+  flex-shrink: 0;
+}
 .entry-card.collapsed .entry-card-preview {
   -webkit-line-clamp: 1;
   white-space: nowrap;
+  font-weight: 700;
+  font-size: 14px;
+  margin: 0;
+  flex: 1;
+  min-width: 0;
 }
 .entry-card.collapsed .entry-card-tags,
 .entry-card.collapsed .entry-card-photos,
@@ -1056,10 +1077,11 @@ img { max-width: 100%; display: block; }
 
 /* ── 響應式 ── */
 @media (max-width: 640px) {
-  /* 視圖切換：縮小以適應手機 */
-  .header-center { display: flex; }
+  /* 手機 header */
   .app-title { display: none; }
-  .view-tabs .tab { padding: 5px 10px; font-size: 12px; }
+  .header-row1 { padding: 0 12px; }
+  .header-row2 { padding: 0 12px 6px; }
+  .view-tabs .tab { padding: 5px 12px; font-size: 13px; }
 
   #main-content { padding: 16px 12px 80px; }
 
