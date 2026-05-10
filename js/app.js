@@ -60,7 +60,20 @@ const App = (() => {
     // 登入 / 登出
     document.getElementById('login-btn').addEventListener('click', () => Auth.login());
     document.getElementById('logout-btn').addEventListener('click', () => {
+      document.getElementById('settings-menu').classList.add('hidden');
       if (confirm('確定要登出嗎？')) Auth.logout();
+    });
+
+    // 設定選單開關
+    document.getElementById('settings-btn').addEventListener('click', (e) => {
+      e.stopPropagation();
+      document.getElementById('settings-menu').classList.toggle('hidden');
+    });
+    document.addEventListener('click', () => {
+      document.getElementById('settings-menu').classList.add('hidden');
+    });
+    document.getElementById('settings-menu').addEventListener('click', (e) => {
+      e.stopPropagation();
     });
 
     // 視圖切換
@@ -232,6 +245,7 @@ const App = (() => {
 
     // ── 統計 ──
     document.getElementById('stats-btn').addEventListener('click', () => {
+      document.getElementById('settings-menu').classList.add('hidden');
       Stats.render(EntryManager.getIndex());
       openModal('stats-modal');
     });

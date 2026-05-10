@@ -21,40 +21,49 @@
   <!-- ── 主應用畫面 ── -->
   <div id="app-screen" class="hidden">
 
-    <!-- 頂部導航 -->
+    <!-- 頂部導航（單行） -->
     <header id="app-header">
-      <!-- 第一行：logo + 功能按鈕 -->
-      <div class="header-row1">
-        <div class="header-left">
-          <span class="app-logo">🌅</span>
-          <span class="app-title">The Days</span>
-        </div>
-        <div class="header-right">
-          <button id="search-btn" title="搜尋">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-          </button>
-          <button id="stats-btn" title="寫作統計">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 20V10M12 20V4M6 20v-6"/></svg>
-          </button>
-          <button id="tags-btn" title="標籤管理">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2H2v10l9.29 9.29a1 1 0 0 0 1.42 0l7.58-7.58a1 1 0 0 0 0-1.42Z"/><circle cx="7" cy="7" r="1" fill="currentColor" stroke="none"/></svg>
-          </button>
-          <button id="trash-btn" title="回收桶">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6m3 0V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
-          </button>
-          <div id="user-info">
-            <img id="user-avatar" src="" alt="">
-            <span id="user-name"></span>
-          </div>
-          <button id="logout-btn">登出</button>
-        </div>
+      <div class="header-left">
+        <span class="app-logo">🌅</span>
+        <span class="app-title">The Days</span>
       </div>
-      <!-- 第二行：視圖切換 -->
-      <div class="header-row2">
+      <div class="header-center">
         <div class="view-tabs">
           <button class="tab active" data-view="timeline">時間軸</button>
           <button class="tab" data-view="calendar">月曆</button>
           <button class="tab" data-view="gallery">畫廊</button>
+        </div>
+      </div>
+      <div class="header-right">
+        <button id="search-btn" title="搜尋">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+        </button>
+        <!-- 設定按鈕 + 下拉選單 -->
+        <div class="settings-wrap">
+          <button id="settings-btn" title="設定">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+          </button>
+          <div id="settings-menu" class="settings-menu hidden">
+            <div class="menu-user">
+              <img id="user-avatar" src="" alt="">
+              <span id="user-name"></span>
+            </div>
+            <div class="menu-divider"></div>
+            <button id="stats-btn" class="menu-item">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 20V10M12 20V4M6 20v-6"/></svg>
+              寫作統計
+            </button>
+            <button id="tags-btn" class="menu-item">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2H2v10l9.29 9.29a1 1 0 0 0 1.42 0l7.58-7.58a1 1 0 0 0 0-1.42Z"/><circle cx="7" cy="7" r="1" fill="currentColor" stroke="none"/></svg>
+              標籤管理
+            </button>
+            <button id="trash-btn" class="menu-item">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6m3 0V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
+              回收桶
+            </button>
+            <div class="menu-divider"></div>
+            <button id="logout-btn" class="menu-item menu-item-danger">登出</button>
+          </div>
         </div>
       </div>
     </header>

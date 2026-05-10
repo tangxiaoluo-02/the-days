@@ -486,34 +486,39 @@ const Editor = (() => {
   async function save() {
     const content  = textarea().value.trim();
     const datetime = new Date(dateInput().value).toISOString();
+    const data = {
+      content, datetime,
+      tags:          selectedTags,
+      photoFiles:    pendingPhotos.map(p => p.file),
+      newPhotoFiles: pendingPhotos.map(p => p.file),
+      keepPhotoIds,
+      weather:       Editor._pendingWeather,
+      location:      Editor._pendingLocation,
+    };
 
-    App.showLoading('儲存日記中…');
-    try {
-      const data = {
-        content,
-        datetime,
-        tags:           selectedTags,
-        photoFiles:     pendingPhotos.map(p => p.file),
-        newPhotoFiles:  pendingPhotos.map(p => p.file),
-        keepPhotoIds,
-        weather:        Editor._pendingWeather,
-        location:       Editor._pendingLocation,
-      };
-
-      if (editingId) {
+    if (editingId) {
+      // 編輯：仍需等待（需更新已存在的 entry）
+      App.showLoading('更新日記中…');
+      try {
         await EntryManager.update(editingId, data);
         App.toast('日記已更新 ✓', 'success');
+        closeModal('editor-modal');
+        App.refreshCurrentView();
+      } catch (e) {
+        App.toast('更新失敗：' + e.message, 'error');
+      } finally {
+        App.hideLoading();
+      }
+    } else {
+      // 新增：立即關閉，背景上傳
+      await EntryManager.create(data);      // 立即返回（背景繼續跑）
+      closeModal('editor-modal');
+      App.refreshCurrentView();             // 立即顯示日記
+      if (pendingPhotos.length > 0) {
+        App.toast('日記已儲存，照片上傳中… ⏫', '');
       } else {
-        await EntryManager.create(data);
         App.toast('日記已儲存 ✓', 'success');
       }
-
-      closeModal('editor-modal');
-      App.refreshCurrentView();
-    } catch (e) {
-      App.toast('儲存失敗：' + e.message, 'error');
-    } finally {
-      App.hideLoading();
     }
   }
 

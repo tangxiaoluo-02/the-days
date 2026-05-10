@@ -49,48 +49,71 @@ const EntryManager = (() => {
     return /https?:\/\/[^\s)>"]+/.test(content);
   }
 
-  // ── 建立新日記 ──
+  // ── 建立新日記（立即回應 + 背景上傳）──
   async function create(data) {
-    const id = uuid();
+    const id  = uuid();
     const now = data.datetime || new Date().toISOString();
+    const photoFiles = data.photoFiles || [];
 
-    // 上傳照片
-    const photos = [];
-    for (const photoFile of (data.photoFiles || [])) {
-      const yearMonth = now.slice(0, 7);
-      const driveId = await Drive.uploadPhoto(photoFile, yearMonth);
-      photos.push({
-        drive_file_id: driveId,
-        filename: photoFile.name,
-        taken_at: photoFile._exifTime || null,
-      });
-    }
+    // 為每張照片產生臨時 ID，blob URL 存入快取讓 UI 立即顯示
+    const photos = photoFiles.map((file, i) => {
+      const tempId  = `_tmp_${id}_${i}`;
+      const blobUrl = URL.createObjectURL(file);
+      Drive.registerBlobUrl(tempId, blobUrl);
+      return { drive_file_id: tempId, filename: file.name, taken_at: file._exifTime || null };
+    });
 
     const entry = {
-      id,
-      created_at: now,
-      updated_at: now,
-      content: data.content || '',
+      id, created_at: now, updated_at: now,
+      content:   data.content  || '',
       photos,
-      tags: data.tags || [],
+      tags:      data.tags     || [],
       has_links: hasLinks(data.content || ''),
       has_photos: photos.length > 0,
-      weather: data.weather || null,
-      location: data.location || null,
+      weather:   data.weather  || null,
+      location:  data.location || null,
       word_count: wordCount(data.content || ''),
     };
 
-    // 儲存完整 entry 到 Drive
-    const driveId = await Drive.saveEntry(entry);
-    driveIdMap.set(id, driveId);
+    // ① 立即更新本機，讓 UI 馬上刷新
     fullCache.set(id, entry);
+    index.entries.unshift(makeSummary(entry, null));
 
-    // 更新索引
-    const summary = makeSummary(entry, driveId);
-    index.entries.unshift(summary);
-    await Drive.saveIndex(index);
+    // ② 背景上傳（不等待）
+    _uploadInBackground(id, entry, photoFiles).catch(e => {
+      console.error('背景同步失敗', e);
+      App.toast('雲端同步失敗，請稍後重試', 'error');
+    });
 
     return entry;
+  }
+
+  // ── 背景上傳照片 + 存 Drive ──
+  async function _uploadInBackground(id, entry, photoFiles) {
+    // 上傳照片，完成後把 tempId 換成真實 driveId
+    const photos = [];
+    for (let i = 0; i < photoFiles.length; i++) {
+      const file   = photoFiles[i];
+      const tempId = `_tmp_${id}_${i}`;
+      const yearMonth = entry.created_at.slice(0, 7);
+      const driveId = await Drive.uploadPhoto(file, yearMonth);
+      Drive.renameBlobUrl(tempId, driveId); // 更新快取 key
+      photos.push({ drive_file_id: driveId, filename: file.name, taken_at: file._exifTime || null });
+    }
+
+    // 更新完整 entry（換成真實 driveId）
+    const updated = { ...entry, photos };
+    const fileDriveId = await Drive.saveEntry(updated);
+    driveIdMap.set(id, fileDriveId);
+    fullCache.set(id, updated);
+
+    // 更新索引
+    const idx = index.entries.findIndex(e => e.id === id);
+    if (idx >= 0) index.entries[idx] = makeSummary(updated, fileDriveId);
+    await Drive.saveIndex(index);
+
+    App.toast('已同步到雲端 ✓', 'success');
+    App.refreshCurrentView(); // 更新縮圖（若有）
   }
 
   // ── 更新日記 ──

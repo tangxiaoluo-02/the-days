@@ -273,10 +273,21 @@ const Drive = (() => {
     await deleteFile(trashFileId);
   }
 
+  // 把 blob URL 注冊到快取（供背景上傳用的臨時佔位）
+  function registerBlobUrl(id, url) { photoCache.set(id, url); }
+  // 背景上傳完成後，把臨時 ID 的快取轉到真實 Drive ID
+  function renameBlobUrl(oldId, newId) {
+    if (photoCache.has(oldId)) {
+      photoCache.set(newId, photoCache.get(oldId));
+      photoCache.delete(oldId);
+    }
+  }
+
   return {
     init,
     readJson, writeJson,
     uploadPhoto, getPhotoUrl,
+    registerBlobUrl, renameBlobUrl,
     loadIndex, saveIndex,
     loadTags, saveTags,
     saveEntry, loadEntry,
