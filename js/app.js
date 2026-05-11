@@ -420,6 +420,13 @@ const App = (() => {
     document.getElementById('search-input').value = '';
   }
 
+  // 從統計頁面點標籤直接跳到搜尋結果
+  function openSearchWithTag(tagId) {
+    openSearchPage();
+    Search.setTagFilter([tagId]);
+    doSearch(); // 以該標籤為篩選條件執行搜尋
+  }
+
   function doSearch() {
     const q        = document.getElementById('search-input').value;
     const hasPhoto = document.getElementById('filter-has-photo').checked;
@@ -575,5 +582,5 @@ const App = (() => {
     SmartTagPicker.init();
   });
 
-  return { toast, showLoading, hideLoading, refreshCurrentView, viewEntry, closeSearchPage };
+  return { toast, showLoading, hideLoading, refreshCurrentView, viewEntry, closeSearchPage, openSearchWithTag };
 })();

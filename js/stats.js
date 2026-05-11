@@ -181,7 +181,14 @@ const Stats = (() => {
       const tag = TagManager.getById(tagId);
       if (!tag) continue;
       const row = document.createElement('div');
-      row.style.cssText = 'display:flex;align-items:center;gap:8px;font-size:13px';
+      row.style.cssText = 'display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;border-radius:6px;padding:4px 6px;transition:background 0.15s';
+      row.title = `點擊搜尋含「${tag.name}」的日記`;
+      row.addEventListener('mouseenter', () => row.style.background = 'var(--surface-2)');
+      row.addEventListener('mouseleave', () => row.style.background = '');
+      row.addEventListener('click', () => {
+        closeModal('stats-modal');
+        App.openSearchWithTag(tagId);
+      });
       const namePart = document.createElement('span');
       namePart.style.cssText = `color:${tag.color};min-width:80px`;
       namePart.textContent = tag.name;

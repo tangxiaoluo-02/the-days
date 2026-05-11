@@ -39,9 +39,20 @@ const SmartTagPicker = (() => {
     list.innerHTML = '';
     const q    = query.trim().toLowerCase();
     const flat = TagManager.getFlat();
-    const filtered = q
-      ? flat.filter(t => t.name.toLowerCase().includes(q))
-      : flat;
+
+    // 支援「父/子」格式篩選
+    let filtered;
+    if (q.includes('/')) {
+      const [parentQ, childQ] = q.split('/').map(s => s.trim());
+      filtered = flat.filter(t => {
+        if (!t.parent_id) return false;
+        const parent = TagManager.getById(t.parent_id);
+        return parent?.name.toLowerCase().includes(parentQ) &&
+               (!childQ || t.name.toLowerCase().includes(childQ));
+      });
+    } else {
+      filtered = q ? flat.filter(t => t.name.toLowerCase().includes(q)) : flat;
+    }
 
     if (!filtered.length && !q) {
       const empty = document.createElement('div');
@@ -81,25 +92,62 @@ const SmartTagPicker = (() => {
       list.appendChild(item);
     }
 
-    // 輸入不存在的名稱時，顯示「建立」選項
-    const exactMatch = flat.find(t => t.name.toLowerCase() === q);
-    if (q && !exactMatch) {
-      const createItem = document.createElement('div');
-      createItem.className = 'stp-create';
-      const displayQ = query.trim();
-      createItem.innerHTML = `＋ 建立標籤「<strong>${displayQ}</strong>」`;
-      createItem.addEventListener('mousedown', async (e) => {
-        e.preventDefault();
-        App.showLoading('建立標籤…');
-        const id = await TagManager.add(displayQ, null, '#8B6914');
-        App.hideLoading();
-        selectedIds.push(id);
-        getInput().value = '';
-        render('');
-        onChangeCb && onChangeCb([...selectedIds]);
-        App.toast(`標籤「${displayQ}」已建立 ✓`, 'success');
-      });
-      list.appendChild(createItem);
+    // 建立標籤選項（支援「父/子」格式）
+    const displayQ = query.trim();
+    if (displayQ) {
+      if (displayQ.includes('/')) {
+        // ── A/B 格式：建立子標籤 ──
+        const [parentName, childName] = displayQ.split('/').map(s => s.trim());
+        if (childName) {
+          const childExact = flat.find(t => {
+            const parent = TagManager.getById(t.parent_id);
+            return t.name === childName && parent?.name === parentName;
+          });
+          if (!childExact) {
+            const createItem = document.createElement('div');
+            createItem.className = 'stp-create';
+            createItem.innerHTML = `＋ 建立子標籤「<strong>${parentName}</strong> / <strong>${childName}</strong>」`;
+            createItem.addEventListener('mousedown', async (e) => {
+              e.preventDefault();
+              App.showLoading('建立標籤…');
+              // 找或建立父標籤
+              let parentTag = TagManager.getAll().find(t => t.name === parentName && !t.parent_id);
+              const parentId = parentTag
+                ? parentTag.id
+                : await TagManager.add(parentName, null, '#8B6914');
+              // 建立子標籤
+              const childId = await TagManager.add(childName, parentId, '#8B6914');
+              App.hideLoading();
+              selectedIds.push(childId);
+              getInput().value = '';
+              render('');
+              onChangeCb && onChangeCb([...selectedIds]);
+              App.toast(`子標籤「${parentName} / ${childName}」已建立 ✓`, 'success');
+            });
+            list.appendChild(createItem);
+          }
+        }
+      } else {
+        // ── 一般格式：建立頂層標籤 ──
+        const exactMatch = flat.find(t => t.name.toLowerCase() === q);
+        if (!exactMatch) {
+          const createItem = document.createElement('div');
+          createItem.className = 'stp-create';
+          createItem.innerHTML = `＋ 建立標籤「<strong>${displayQ}</strong>」`;
+          createItem.addEventListener('mousedown', async (e) => {
+            e.preventDefault();
+            App.showLoading('建立標籤…');
+            const id = await TagManager.add(displayQ, null, '#8B6914');
+            App.hideLoading();
+            selectedIds.push(id);
+            getInput().value = '';
+            render('');
+            onChangeCb && onChangeCb([...selectedIds]);
+            App.toast(`標籤「${displayQ}」已建立 ✓`, 'success');
+          });
+          list.appendChild(createItem);
+        }
+      }
     }
   }
 

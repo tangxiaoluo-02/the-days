@@ -229,5 +229,11 @@ const Search = (() => {
     return [..._selectedFilterTagIds];
   }
 
-  return { run, renderResults, initTagFilter, renderTagFilterDropdown, getSelectedTagFilters };
+  function setTagFilter(ids) {
+    _selectedFilterTagIds = [...ids];
+    renderSelectedFilterChips();
+    updateTagFilterBtn();
+  }
+
+  return { run, renderResults, initTagFilter, renderTagFilterDropdown, getSelectedTagFilters, setTagFilter };
 })();
