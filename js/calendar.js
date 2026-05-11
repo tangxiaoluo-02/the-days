@@ -138,6 +138,18 @@ const Calendar = (() => {
 
       item.appendChild(time);
       item.appendChild(preview);
+
+      // 顯示標籤
+      if (e.tags?.length) {
+        const tagsRow = document.createElement('div');
+        tagsRow.className = 'entry-card-tags';
+        for (const tagId of e.tags) {
+          const tag = TagManager.getById(tagId);
+          if (tag) tagsRow.appendChild(Editor.makeTagChip(tag));
+        }
+        item.appendChild(tagsRow);
+      }
+
       item.addEventListener('click', () => App.viewEntry(e.id));
       list.appendChild(item);
     }

@@ -518,7 +518,7 @@ img { max-width: 100%; display: block; }
 .editor-box { max-width: 680px; }
 .view-box   { max-width: 680px; }
 .search-box { max-width: 600px; }
-.tags-box   { max-width: 520px; }
+.tags-box   { max-width: 560px; }
 .stats-box  { max-width: 560px; }
 .trash-box  { max-width: 600px; }
 
@@ -1183,16 +1183,21 @@ img { max-width: 100%; display: block; }
     overflow-y: auto;
   }
 
-  /* Editor modal：全螢幕，避免鍵盤擠壓問題 */
-  #editor-modal {
+  /* Editor / Tags modal：全螢幕 */
+  #editor-modal,
+  #tags-modal {
     align-items: flex-start;
     padding: 0;
   }
-  #editor-modal .modal-box {
+  #editor-modal .modal-box,
+  #tags-modal .modal-box {
     border-radius: 0;
     height: 100dvh;
     max-height: 100dvh;
     overflow: hidden;
+  }
+  #tags-modal .modal-box {
+    overflow-y: auto;
   }
 
   /* 各固定區塊不縮小 */

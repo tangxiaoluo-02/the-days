@@ -1,6 +1,14 @@
 // ── 寫作統計模組 ──
 const Stats = (() => {
 
+  // 取得本地日期字串（避免 UTC 偏差）
+  function localDateStr(d) {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+  }
+
   function render(entries) {
     const container = document.getElementById('stats-content');
     container.innerHTML = '';
@@ -13,15 +21,14 @@ const Stats = (() => {
     // ── 基本數字 ──
     const totalWords   = entries.reduce((s, e) => s + (e.word_count || 0), 0);
     const withPhotos   = entries.filter(e => e.has_photos).length;
-    const todayStr     = new Date().toISOString().slice(0, 10);
+    const todayStr     = localDateStr(new Date());
     const todayCount   = entries.filter(e => e.created_at.slice(0, 10) === todayStr).length;
     const streak       = calcStreak(entries);
     const longestStreak = calcLongestStreak(entries);
 
-    // 最早、最晚
-    const sorted = [...entries].sort((a,b) => a.created_at.localeCompare(b.created_at));
-    const firstDate = sorted[0].created_at.slice(0, 10);
-    const totalDays = Math.ceil((Date.now() - new Date(firstDate)) / 86400000) + 1;
+    // 有記錄的不同日期數（用 Set 去重）
+    const uniqueDates = new Set(entries.map(e => e.created_at.slice(0, 10)));
+    const totalDays   = uniqueDates.size;
 
     const grid = document.createElement('div');
     grid.className = 'stats-grid';
@@ -57,9 +64,8 @@ const Stats = (() => {
     const dates = new Set(entries.map(e => e.created_at.slice(0, 10)));
     let streak = 0;
     let d = new Date();
-    d.setHours(0,0,0,0);
     while (true) {
-      const s = d.toISOString().slice(0, 10);
+      const s = localDateStr(d); // 用本地日期，避免 UTC 偏差
       if (!dates.has(s)) break;
       streak++;
       d.setDate(d.getDate() - 1);
@@ -132,7 +138,7 @@ const Stats = (() => {
 
     for (let i = 69; i >= 0; i--) {
       const d = new Date(Date.now() - i * 86400000);
-      const s = d.toISOString().slice(0, 10);
+      const s = localDateStr(d); // 用本地日期
       const cell = document.createElement('div');
       cell.className = 'streak-day' + (dates.has(s) ? ' active' : '');
       cell.title = `${s}：${dates.has(s) ? '有記錄' : '無記錄'}`;
