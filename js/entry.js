@@ -52,7 +52,7 @@ const EntryManager = (() => {
   // ── 建立新日記（立即回應 + 背景上傳）──
   async function create(data) {
     const id  = uuid();
-    const now = data.datetime || new Date().toISOString();
+    const now = data.datetime || toLocalISOString(new Date());
     const photoFiles = data.photoFiles || [];
 
     // 為每張照片產生臨時 ID，blob URL 存入快取讓 UI 立即顯示

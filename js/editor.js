@@ -501,7 +501,11 @@ const Editor = (() => {
   // ── 儲存 ──
   async function save() {
     const content  = textarea().value.trim();
-    const datetime = new Date(dateInput().value).toISOString();
+    // 手動解析 datetime-local 值（避免瀏覽器 UTC 解析差異）
+    const [datePart, timePart] = dateInput().value.split('T');
+    const [dy, dm, dd]  = datePart.split('-').map(Number);
+    const [dh, dmin]    = timePart.split(':').map(Number);
+    const datetime = toLocalISOString(new Date(dy, dm - 1, dd, dh, dmin, 0));
     const data = {
       content, datetime,
       tags:          selectedTags,

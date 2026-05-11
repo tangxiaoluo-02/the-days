@@ -31,7 +31,7 @@ const Calendar = (() => {
     const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
     const prevMonthDays = new Date(currentYear, currentMonth, 0).getDate();
 
-    const todayStr = new Date().toISOString().slice(0, 10);
+    const todayStr = localDateStr(new Date());
 
     // 建立當月所有日期的日記數量 map
     const countMap = new Map();

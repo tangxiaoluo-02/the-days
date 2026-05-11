@@ -168,8 +168,8 @@ const Timeline = (() => {
     const m = d.getMonth() + 1;
     const day = d.getDate();
     const wd = weekdays[d.getDay()];
-    const today = new Date().toISOString().slice(0, 10);
-    const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+    const today     = localDateStr(new Date());
+    const yesterday = localDateStr(new Date(Date.now() - 86400000));
     if (dateStr === today) return `今天（${m}月${day}日，週${wd}）`;
     if (dateStr === yesterday) return `昨天（${m}月${day}日，週${wd}）`;
     return `${d.getFullYear()}年 ${m}月${day}日，週${wd}`;

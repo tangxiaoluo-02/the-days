@@ -1,14 +1,6 @@
 // ── 寫作統計模組 ──
 const Stats = (() => {
 
-  // 取得本地日期字串（避免 UTC 偏差）
-  function localDateStr(d) {
-    const y = d.getFullYear();
-    const m = String(d.getMonth() + 1).padStart(2, '0');
-    const day = String(d.getDate()).padStart(2, '0');
-    return `${y}-${m}-${day}`;
-  }
-
   function render(entries) {
     const container = document.getElementById('stats-content');
     container.innerHTML = '';
@@ -21,7 +13,7 @@ const Stats = (() => {
     // ── 基本數字 ──
     const totalWords   = entries.reduce((s, e) => s + (e.word_count || 0), 0);
     const withPhotos   = entries.filter(e => e.has_photos).length;
-    const todayStr     = localDateStr(new Date());
+    const todayStr     = localDateStr(new Date()); // 使用全域 localDateStr（config.js）
     const todayCount   = entries.filter(e => e.created_at.slice(0, 10) === todayStr).length;
     const streak       = calcStreak(entries);
     const longestStreak = calcLongestStreak(entries);
