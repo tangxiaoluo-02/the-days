@@ -88,48 +88,64 @@ const EntryManager = (() => {
     return entry;
   }
 
-  // ── 背景上傳（先存文字，再傳照片）──
+  // ── 背景上傳：文字與照片各自獨立，互不影響 ──
   async function _uploadInBackground(id, entry, photoFiles) {
 
-    // ① 先把文字（不含照片）存到 Drive，確保重整頁面也不遺失
-    const textEntry  = { ...entry, photos: [] };
-    const fileDriveId = await Drive.saveEntry(textEntry);
-    driveIdMap.set(id, fileDriveId);
-    fullCache.set(id, textEntry);
+    // ▶ 任務 A：快速存文字（獨立執行，失敗不影響任務 B）
+    _saveTextOnly(id, entry).catch(e =>
+      console.warn('[背景] 文字預存失敗（不影響照片上傳）:', e)
+    );
 
-    // ② 更新索引（文字版本）
-    const idx = index.entries.findIndex(e => e.id === id);
-    if (idx >= 0) index.entries[idx] = makeSummary(textEntry, fileDriveId);
-    await Drive.saveIndex(index);
-    // → 到這裡文字已安全存到 Drive，重整頁面不會遺失
-
+    // ▶ 任務 B：上傳照片 → 存完整 entry → 更新索引
     if (photoFiles.length === 0) {
-      App.toast('已同步到雲端 ✓', 'success');
+      // 沒有照片，等任務 A 完成後就好
+      try {
+        await _saveTextOnly(id, entry);
+        App.toast('已同步到雲端 ✓', 'success');
+      } catch(e) {
+        App.toast('同步失敗，請稍後重試', 'error');
+      }
       return;
     }
 
-    // ③ 背景上傳照片（照片上傳期間文字已安全）
+    // 上傳每張照片
     const photos = [];
     for (let i = 0; i < photoFiles.length; i++) {
-      const file    = photoFiles[i];
-      const tempId  = `_tmp_${id}_${i}`;
+      const file      = photoFiles[i];
+      const tempId    = `_tmp_${id}_${i}`;
       const yearMonth = entry.created_at.slice(0, 7);
-      const driveId = await Drive.uploadPhoto(file, yearMonth);
+      const driveId   = await Drive.uploadPhoto(file, yearMonth);
       Drive.renameBlobUrl(tempId, driveId);
-      photos.push({ drive_file_id: driveId, filename: file.name, taken_at: file._exifTime || null });
+      photos.push({
+        drive_file_id: driveId,
+        filename: file.name,
+        taken_at: file._exifTime || null,
+      });
     }
 
-    // ④ 更新 entry 含照片
-    const updated = { ...entry, photos };
-    await Drive.saveEntry(updated);   // 覆蓋原本的 textEntry
+    // 存完整 entry（含照片真實 ID）
+    const updated     = { ...entry, photos };
+    const fileDriveId = await Drive.saveEntry(updated);
+    driveIdMap.set(id, fileDriveId);
     fullCache.set(id, updated);
 
-    // ⑤ 更新索引（加入照片資訊）
+    // 更新索引
+    const idx = index.entries.findIndex(e => e.id === id);
     if (idx >= 0) index.entries[idx] = makeSummary(updated, fileDriveId);
     await Drive.saveIndex(index);
 
     App.toast('已同步到雲端 ✓', 'success');
     App.refreshCurrentView();
+  }
+
+  // 只存文字（不含照片），讓重整頁面時至少文字不遺失
+  async function _saveTextOnly(id, entry) {
+    const textEntry   = { ...entry, photos: [], has_photos: false };
+    const fileDriveId = await Drive.saveEntry(textEntry);
+    driveIdMap.set(id, fileDriveId);
+    const idx = index.entries.findIndex(e => e.id === id);
+    if (idx >= 0) index.entries[idx] = makeSummary(textEntry, fileDriveId);
+    await Drive.saveIndex(index);
   }
 
   // ── 更新日記 ──
