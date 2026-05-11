@@ -426,22 +426,23 @@ const Editor = (() => {
     return chip;
   }
 
+  // 改用智慧標籤選取器
   function openTagPicker() {
-    const picker = document.getElementById('tag-picker');
-    picker.classList.toggle('hidden');
-    if (!picker.classList.contains('hidden')) renderTagPicker();
+    SmartTagPicker.open(
+      document.getElementById('add-tag-btn'),
+      selectedTags,
+      (newIds) => {
+        selectedTags = newIds;
+        renderSelectedTags();
+      }
+    );
   }
 
-  function renderTagPicker() {
+  // 舊版 tag-picker（保留供向後相容）
+  function _renderTagPicker_unused() {
     const picker = document.getElementById('tag-picker');
     picker.innerHTML = '';
     const flat = TagManager.getFlat();
-    if (!flat.length) {
-      const hint = document.createElement('div');
-      hint.style.cssText = 'font-size:12px;color:var(--text-3);padding:6px 8px';
-      hint.textContent = '尚無標籤，請先新增';
-      picker.appendChild(hint);
-    }
     for (const tag of flat) {
       const item = document.createElement('div');
       item.className = 'tag-picker-item' + (selectedTags.includes(tag.id) ? ' selected' : '');

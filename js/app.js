@@ -314,13 +314,41 @@ const App = (() => {
         timeZone: 'Asia/Taipei'
       });
 
-    // 標籤
+    // 標籤（可點擊編輯）
     const tagsEl = document.getElementById('view-tags');
-    tagsEl.innerHTML = '';
-    for (const tagId of (entry.tags || [])) {
-      const tag = TagManager.getById(tagId);
-      if (tag) tagsEl.appendChild(Editor.makeTagChip(tag));
+    let viewEntryTags = [...(entry.tags || [])];
+
+    function renderViewTags() {
+      tagsEl.innerHTML = '';
+      for (const tagId of viewEntryTags) {
+        const tag = TagManager.getById(tagId);
+        if (tag) tagsEl.appendChild(Editor.makeTagChip(tag));
+      }
+      // 編輯按鈕
+      const editTagBtn = document.createElement('button');
+      editTagBtn.className = 'view-edit-tags-btn';
+      editTagBtn.textContent = viewEntryTags.length > 0 ? '✏️' : '＋ 新增標籤';
+      editTagBtn.title = '編輯標籤';
+      editTagBtn.onclick = (e) => {
+        e.stopPropagation();
+        SmartTagPicker.open(editTagBtn, viewEntryTags, async (newIds) => {
+          viewEntryTags = newIds;
+          renderViewTags();
+          // 背景儲存（不等待，不擋 UI）
+          try {
+            const fullEntry = await EntryManager.getEntry(entry.id);
+            await EntryManager.update(entry.id, {
+              content: fullEntry.content,
+              datetime: fullEntry.created_at,
+              tags: newIds,
+              keepPhotoIds: fullEntry.photos.map(p => p.drive_file_id),
+            });
+          } catch(e) { console.warn('標籤儲存失敗', e); }
+        });
+      };
+      tagsEl.appendChild(editTagBtn);
     }
+    renderViewTags();
 
     // meta（天氣、位置）
     const metaEl = document.getElementById('view-meta');
@@ -510,7 +538,10 @@ const App = (() => {
   }
 
   // ── 啟動 ──
-  document.addEventListener('DOMContentLoaded', init);
+  document.addEventListener('DOMContentLoaded', () => {
+    init();
+    SmartTagPicker.init();
+  });
 
   return { toast, showLoading, hideLoading, refreshCurrentView, viewEntry };
 })();

@@ -724,6 +724,17 @@ img { max-width: 100%; display: block; }
 }
 #add-photo-btn:hover { border-color: var(--accent); color: var(--primary); }
 
+/* ── 查看日記標籤編輯按鈕 ── */
+.view-edit-tags-btn {
+  font-size: 12px;
+  color: var(--text-3);
+  padding: 2px 8px;
+  border: 1px dashed var(--border-2);
+  border-radius: 50px;
+  transition: all 0.15s;
+}
+.view-edit-tags-btn:hover { border-color: var(--accent); color: var(--primary); }
+
 /* ── 查看模態框 ── */
 .view-meta-time {
   font-size: 14px;
@@ -980,6 +991,90 @@ img { max-width: 100%; display: block; }
   transition: all 0.15s;
 }
 .trash-restore-btn:hover { background: var(--success); color: #fff; }
+
+/* ── 智慧標籤選取器 ── */
+.smart-tag-picker {
+  position: fixed;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-lg);
+  width: 260px;
+  max-height: 320px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  z-index: 350;
+}
+.stp-search-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+#stp-input {
+  flex: 1;
+  border: none;
+  outline: none;
+  font-size: 13px;
+  background: transparent;
+  color: var(--text);
+}
+#stp-input::placeholder { color: var(--text-3); }
+.stp-list {
+  overflow-y: auto;
+  flex: 1;
+  padding: 4px 0;
+}
+.stp-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 12px;
+  cursor: pointer;
+  font-size: 13px;
+  transition: background 0.12s;
+}
+.stp-item:hover { background: var(--surface-2); }
+.stp-item.stp-selected { background: var(--surface-2); }
+.stp-check {
+  width: 16px;
+  font-size: 12px;
+  color: var(--success);
+  font-weight: 700;
+  flex-shrink: 0;
+}
+.stp-empty {
+  padding: 12px;
+  font-size: 12px;
+  color: var(--text-3);
+  text-align: center;
+}
+.stp-create {
+  padding: 8px 12px;
+  font-size: 13px;
+  color: var(--primary);
+  cursor: pointer;
+  border-top: 1px solid var(--border);
+  transition: background 0.12s;
+}
+.stp-create:hover { background: var(--surface-2); }
+/* 手機：從底部彈出 */
+@media (max-width: 640px) {
+  .smart-tag-picker {
+    position: fixed !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    top: auto !important;
+    width: 100% !important;
+    max-width: none;
+    max-height: 60dvh;
+    border-radius: 16px 16px 0 0;
+  }
+}
 
 /* ── # Mention 標籤選取器 ── */
 .mention-picker {
