@@ -1,7 +1,7 @@
 // ── 日記編輯器模組 ──
 const Editor = (() => {
   let editingId    = null;   // null = 新增，有值 = 編輯
-  let pendingPhotos = [];    // { file, previewUrl, exifTime }
+  let pendingPhotos = [];    // { file, previewUrl, exifTime, compress }
   let keepPhotoIds  = [];    // 編輯時保留的舊照片 drive_file_id
   let selectedTags  = [];    // 已選擇的 tag id
 
@@ -56,7 +56,6 @@ const Editor = (() => {
 
     openModal('editor-modal');
     textarea().focus();
-    bindMentionTrigger();
   }
 
   // ── 轉換時間為 <input datetime-local> 格式 ──
@@ -116,10 +115,12 @@ const Editor = (() => {
     insertAt(ta, start, end, html);
   }
 
-  // ── # Mention 標籤觸發 ──
-  let mentionStart = -1;
-
+  // ── # Mention（已停用，保留備用）──
   function bindMentionTrigger() {
+    // 取消 # 觸發，避免與 Markdown 標題語法衝突
+    return;
+  }
+  function _mentionTrigger_unused() {
     const ta = textarea();
     ta.addEventListener('input', onMentionInput);
     ta.addEventListener('keydown', onMentionKeydown);
@@ -303,12 +304,10 @@ const Editor = (() => {
       file._exifTime = exifTime;
 
       // 壓縮照片再使用
-      const compressed = await compressImage(file);
-      compressed._exifTime = exifTime;
-
-      const previewUrl = URL.createObjectURL(compressed);
-      pendingPhotos.push({ file: compressed, previewUrl, exifTime });
-      addNewPhotoThumb(compressed, previewUrl, exifTime);
+      const previewUrl = URL.createObjectURL(file);
+      const entry = { file, previewUrl, exifTime, compress: true }; // 預設壓縮
+      pendingPhotos.push(entry);
+      addNewPhotoThumb(entry);
     }
 
     // 如果有 EXIF 時間，詢問是否使用第一張
@@ -321,7 +320,8 @@ const Editor = (() => {
     }
   }
 
-  function addNewPhotoThumb(file, previewUrl, exifTime) {
+  function addNewPhotoThumb(entry) {
+    const { file, previewUrl, exifTime } = entry;
     const wrap = document.createElement('div');
     wrap.className = 'photo-preview-wrap';
     wrap.dataset.key = previewUrl;
@@ -339,8 +339,23 @@ const Editor = (() => {
       wrap.remove();
     };
 
+    // 壓縮 / 原檔切換按鈕
+    const qualityToggle = document.createElement('div');
+    qualityToggle.className = 'photo-quality-toggle';
+    qualityToggle.title = '點擊切換壓縮/原檔';
+    qualityToggle.textContent = '壓縮';
+    qualityToggle.dataset.compress = 'true';
+    qualityToggle.onclick = () => {
+      const isCompress = qualityToggle.dataset.compress === 'true';
+      qualityToggle.dataset.compress = isCompress ? 'false' : 'true';
+      qualityToggle.textContent = isCompress ? '原檔' : '壓縮';
+      qualityToggle.classList.toggle('original', isCompress);
+      entry.compress = !isCompress;
+    };
+
     wrap.appendChild(img);
     wrap.appendChild(rm);
+    wrap.appendChild(qualityToggle);
     photoList().appendChild(wrap);
   }
 
@@ -489,8 +504,8 @@ const Editor = (() => {
     const data = {
       content, datetime,
       tags:          selectedTags,
-      photoFiles:    pendingPhotos.map(p => p.file),
-      newPhotoFiles: pendingPhotos.map(p => p.file),
+      photoFiles:    await Promise.all(pendingPhotos.map(p => p.compress ? compressImage(p.file) : p.file)),
+      newPhotoFiles: await Promise.all(pendingPhotos.map(p => p.compress ? compressImage(p.file) : p.file)),
       keepPhotoIds,
       weather:       Editor._pendingWeather,
       location:      Editor._pendingLocation,

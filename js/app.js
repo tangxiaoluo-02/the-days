@@ -11,7 +11,7 @@ function closeModal(id) {
 }
 
 const App = (() => {
-  let currentView = 'timeline';
+  let currentView = 'calendar';
 
   // ════════════════════════
   //  初始化

@@ -176,9 +176,12 @@ const Timeline = (() => {
   }
 
   function formatTime(iso) {
-    return new Date(iso).toLocaleTimeString('zh-TW', {
-      hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Asia/Taipei'
-    });
+    const d = new Date(iso);
+    const h = d.getHours();
+    const m = String(d.getMinutes()).padStart(2, '0');
+    const period = h < 12 ? '上午' : '下午';
+    const h12 = h === 0 ? 12 : h > 12 ? h - 12 : h;
+    return `${period} ${h12}:${m}`;
   }
 
   return { render, collapseAll, expandAll };

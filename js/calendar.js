@@ -106,7 +106,9 @@ const Calendar = (() => {
     const title = document.getElementById('day-entries-title');
     const list  = document.getElementById('day-entries-list');
 
-    const entries = allEntries.filter(e => e.created_at.slice(0, 10) === dateStr);
+    const entries = allEntries
+      .filter(e => e.created_at.slice(0, 10) === dateStr)
+      .sort((a, b) => a.created_at.localeCompare(b.created_at)); // 舊的在上
 
     if (!entries.length) {
       panel.classList.add('hidden');
@@ -124,9 +126,11 @@ const Calendar = (() => {
 
       const time = document.createElement('div');
       time.className = 'entry-card-time';
-      time.textContent = new Date(e.created_at).toLocaleTimeString('zh-TW', {
-        hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Asia/Taipei'
-      });
+      const _d = new Date(e.created_at);
+      const _h = _d.getHours(), _m = String(_d.getMinutes()).padStart(2,'0');
+      const _p = _h < 12 ? '上午' : '下午';
+      const _h12 = _h === 0 ? 12 : _h > 12 ? _h - 12 : _h;
+      time.textContent = `${_p} ${_h12}:${_m}`;
 
       const preview = document.createElement('div');
       preview.className = 'entry-card-preview';

@@ -29,8 +29,8 @@
       </div>
       <div class="header-center">
         <div class="view-tabs">
-          <button class="tab active" data-view="timeline">時間軸</button>
-          <button class="tab" data-view="calendar">月曆</button>
+          <button class="tab" data-view="timeline">時間軸</button>
+          <button class="tab active" data-view="calendar">月曆</button>
           <button class="tab" data-view="gallery">畫廊</button>
         </div>
       </div>
@@ -72,7 +72,7 @@
     <main id="main-content">
 
       <!-- 時間軸視圖 -->
-      <div id="timeline-view" class="view">
+      <div id="timeline-view" class="view hidden">
         <div class="view-toolbar">
           <button id="collapse-all-btn">全部折疊</button>
           <button id="expand-all-btn">全部展開</button>
@@ -85,7 +85,7 @@
       </div>
 
       <!-- 月曆視圖 -->
-      <div id="calendar-view" class="view hidden">
+      <div id="calendar-view" class="view">
         <div id="calendar-header">
           <button id="cal-prev">‹</button>
           <h2 id="cal-title"></h2>
@@ -299,9 +299,6 @@
       </div>
     </div>
   </div>
-
-  <!-- # 標籤 mention 選取器 -->
-  <div id="mention-picker" class="mention-picker hidden"></div>
 
   <!-- 照片放大燈箱 -->
   <div id="lightbox" class="hidden">
