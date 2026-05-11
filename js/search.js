@@ -229,5 +229,5 @@ const Search = (() => {
     return [..._selectedFilterTagIds];
   }
 
-  return { run, renderResults, renderTagFilter, getSelectedTagFilters };
+  return { run, renderResults, initTagFilter, renderTagFilterDropdown, getSelectedTagFilters };
 })();
