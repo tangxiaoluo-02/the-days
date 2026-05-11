@@ -88,32 +88,48 @@ const EntryManager = (() => {
     return entry;
   }
 
-  // ── 背景上傳照片 + 存 Drive ──
+  // ── 背景上傳（先存文字，再傳照片）──
   async function _uploadInBackground(id, entry, photoFiles) {
-    // 上傳照片，完成後把 tempId 換成真實 driveId
+
+    // ① 先把文字（不含照片）存到 Drive，確保重整頁面也不遺失
+    const textEntry  = { ...entry, photos: [] };
+    const fileDriveId = await Drive.saveEntry(textEntry);
+    driveIdMap.set(id, fileDriveId);
+    fullCache.set(id, textEntry);
+
+    // ② 更新索引（文字版本）
+    const idx = index.entries.findIndex(e => e.id === id);
+    if (idx >= 0) index.entries[idx] = makeSummary(textEntry, fileDriveId);
+    await Drive.saveIndex(index);
+    // → 到這裡文字已安全存到 Drive，重整頁面不會遺失
+
+    if (photoFiles.length === 0) {
+      App.toast('已同步到雲端 ✓', 'success');
+      return;
+    }
+
+    // ③ 背景上傳照片（照片上傳期間文字已安全）
     const photos = [];
     for (let i = 0; i < photoFiles.length; i++) {
-      const file   = photoFiles[i];
-      const tempId = `_tmp_${id}_${i}`;
+      const file    = photoFiles[i];
+      const tempId  = `_tmp_${id}_${i}`;
       const yearMonth = entry.created_at.slice(0, 7);
       const driveId = await Drive.uploadPhoto(file, yearMonth);
-      Drive.renameBlobUrl(tempId, driveId); // 更新快取 key
+      Drive.renameBlobUrl(tempId, driveId);
       photos.push({ drive_file_id: driveId, filename: file.name, taken_at: file._exifTime || null });
     }
 
-    // 更新完整 entry（換成真實 driveId）
+    // ④ 更新 entry 含照片
     const updated = { ...entry, photos };
-    const fileDriveId = await Drive.saveEntry(updated);
-    driveIdMap.set(id, fileDriveId);
+    await Drive.saveEntry(updated);   // 覆蓋原本的 textEntry
     fullCache.set(id, updated);
 
-    // 更新索引
-    const idx = index.entries.findIndex(e => e.id === id);
+    // ⑤ 更新索引（加入照片資訊）
     if (idx >= 0) index.entries[idx] = makeSummary(updated, fileDriveId);
     await Drive.saveIndex(index);
 
     App.toast('已同步到雲端 ✓', 'success');
-    App.refreshCurrentView(); // 更新縮圖（若有）
+    App.refreshCurrentView();
   }
 
   // ── 更新日記 ──
