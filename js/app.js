@@ -216,15 +216,30 @@ const App = (() => {
       }
     });
 
-    // ── 搜尋 ──
-    document.getElementById('search-btn').addEventListener('click', () => {
-      Search.renderTagFilter();
-      openModal('search-modal');
-      document.getElementById('search-input').focus();
-    });
+    // ── 搜尋頁面 ──
+    document.getElementById('search-btn').addEventListener('click', openSearchPage);
+    document.getElementById('search-back-btn').addEventListener('click', closeSearchPage);
     document.getElementById('do-search-btn').addEventListener('click', doSearch);
     document.getElementById('search-input').addEventListener('keydown', (e) => {
       if (e.key === 'Enter') doSearch();
+    });
+    // 標籤篩選下拉
+    document.getElementById('tag-filter-btn').addEventListener('click', (e) => {
+      e.stopPropagation();
+      const dd = document.getElementById('tag-filter-dropdown');
+      if (dd.classList.contains('hidden')) {
+        Search.renderTagFilterDropdown();
+        dd.classList.remove('hidden');
+        document.getElementById('tag-filter-btn').classList.add('active');
+      } else {
+        dd.classList.add('hidden');
+        document.getElementById('tag-filter-btn').classList.remove('active');
+      }
+    });
+    document.getElementById('tag-filter-dropdown').addEventListener('click', (e) => e.stopPropagation());
+    document.addEventListener('click', () => {
+      document.getElementById('tag-filter-dropdown').classList.add('hidden');
+      document.getElementById('tag-filter-btn').classList.remove('active');
     });
 
     // ── 標籤管理 ──
@@ -389,14 +404,31 @@ const App = (() => {
   }
 
   // ════════════════════════
-  //  搜尋
+  //  搜尋頁面
   // ════════════════════════
+  function openSearchPage() {
+    document.getElementById('search-page').classList.remove('hidden');
+    document.getElementById('search-hint').classList.remove('hidden');
+    document.getElementById('search-empty').classList.add('hidden');
+    document.getElementById('search-results').innerHTML = '';
+    document.getElementById('search-input').focus();
+    Search.initTagFilter();
+  }
+
+  function closeSearchPage() {
+    document.getElementById('search-page').classList.add('hidden');
+    document.getElementById('search-input').value = '';
+  }
+
   function doSearch() {
-    const q     = document.getElementById('search-input').value;
+    const q        = document.getElementById('search-input').value;
     const hasPhoto = document.getElementById('filter-has-photo').checked;
     const hasLink  = document.getElementById('filter-has-link').checked;
     const tagIds   = Search.getSelectedTagFilters();
     const results  = Search.run(q, { hasPhoto, hasLink, tags: tagIds });
+
+    document.getElementById('search-hint').classList.add('hidden');
+    document.getElementById('search-empty').classList.toggle('hidden', results.length > 0);
     Search.renderResults(results);
   }
 
@@ -543,5 +575,5 @@ const App = (() => {
     SmartTagPicker.init();
   });
 
-  return { toast, showLoading, hideLoading, refreshCurrentView, viewEntry };
+  return { toast, showLoading, hideLoading, refreshCurrentView, viewEntry, closeSearchPage };
 })();

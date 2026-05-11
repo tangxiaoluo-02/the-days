@@ -221,28 +221,50 @@
   </div>
 
   <!-- ══════════════════════════════════════
-       模態框：搜尋
+       全版搜尋頁面
   ══════════════════════════════════════ -->
-  <div id="search-modal" class="modal hidden">
-    <div class="modal-backdrop"></div>
-    <div class="modal-box search-box">
-      <div class="modal-header">
-        <h3>搜尋日記</h3>
-        <button class="modal-close" data-modal="search-modal">✕</button>
+  <div id="search-page" class="hidden">
+    <!-- 頂部搜尋列 -->
+    <div id="search-page-header">
+      <button id="search-back-btn" title="返回">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="m12 5-7 7 7 7"/></svg>
+      </button>
+      <input type="text" id="search-input" placeholder="搜尋日記…支援 AND / OR / NOT" autocomplete="off">
+      <button id="do-search-btn" class="btn-primary">搜尋</button>
+    </div>
+
+    <!-- 篩選列 -->
+    <div id="search-filter-bar">
+      <label class="filter-check"><input type="checkbox" id="filter-has-photo"><span>有照片</span></label>
+      <label class="filter-check"><input type="checkbox" id="filter-has-link"><span>有連結</span></label>
+      <!-- 標籤篩選下拉 -->
+      <div class="tag-filter-wrap">
+        <button id="tag-filter-btn">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2H2v10l9.29 9.29a1 1 0 0 0 1.42 0l7.58-7.58a1 1 0 0 0 0-1.42Z"/><circle cx="7" cy="7" r="1" fill="currentColor" stroke="none"/></svg>
+          <span id="tag-filter-label">標籤篩選</span>
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+        </button>
+        <div id="tag-filter-dropdown" class="hidden"></div>
       </div>
-      <div class="search-input-area">
-        <input type="text" id="search-input" placeholder="輸入關鍵字，支援 AND / OR / NOT">
-        <button id="do-search-btn" class="btn-primary">搜尋</button>
-      </div>
-      <div class="search-filters">
-        <label><input type="checkbox" id="filter-has-photo"> 只顯示有照片的</label>
-        <label><input type="checkbox" id="filter-has-link"> 只顯示有超連結的</label>
-        <div class="search-tag-filter">
-          <span>標籤篩選：</span>
-          <div id="search-tag-list"></div>
-        </div>
-      </div>
-      <div id="search-results"></div>
+    </div>
+    <!-- 已選標籤 chip 列 -->
+    <div id="selected-filter-tags"></div>
+
+    <!-- 搜尋結果 -->
+    <div id="search-results"></div>
+
+    <!-- 提示（尚未搜尋時顯示） -->
+    <div id="search-hint">
+      <div class="search-hint-icon">🔍</div>
+      <p>輸入關鍵字，按搜尋開始</p>
+      <p class="hint-tip">支援進階語法：</p>
+      <p class="hint-example">媽媽 AND 旅遊　→ 同時含這兩個詞</p>
+      <p class="hint-example">工作 OR 演出　→ 含其中一個</p>
+      <p class="hint-example">NOT 工作　　　→ 不含這個詞</p>
+    </div>
+    <div id="search-empty" class="empty-state hidden">
+      <div class="empty-icon">😶</div>
+      <p>找不到符合的日記</p>
     </div>
   </div>
 

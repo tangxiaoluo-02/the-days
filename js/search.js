@@ -90,61 +90,143 @@ const Search = (() => {
   function renderResults(results) {
     const container = document.getElementById('search-results');
     container.innerHTML = '';
-
-    if (!results.length) {
-      container.innerHTML = '<p style="color:var(--text-3);text-align:center;padding:20px">找不到符合的日記</p>';
-      return;
-    }
+    if (!results.length) return;
 
     for (const e of results) {
       const item = document.createElement('div');
       item.className = 'search-result-item';
 
+      // 時間
+      const d = new Date(e.created_at);
+      const h = d.getHours(), m = String(d.getMinutes()).padStart(2,'0');
+      const period = h < 12 ? '上午' : '下午';
+      const h12 = h === 0 ? 12 : h > 12 ? h - 12 : h;
       const time = document.createElement('div');
       time.className = 'search-result-time';
-      time.textContent = new Date(e.created_at).toLocaleString('zh-TW', { timeZone: 'Asia/Taipei' });
+      time.textContent = `${d.getFullYear()}/${d.getMonth()+1}/${d.getDate()} ${period} ${h12}:${m}`;
 
+      // 預覽（高亮）
       const prev = document.createElement('div');
       prev.className = 'search-result-preview';
       prev.innerHTML = highlight(e.preview || '（無內容）', e._tokens);
 
       item.appendChild(time);
       item.appendChild(prev);
+
+      // 標籤
+      if (e.tags?.length) {
+        const tagsRow = document.createElement('div');
+        tagsRow.className = 'search-result-tags';
+        for (const tagId of e.tags) {
+          const tag = TagManager.getById(tagId);
+          if (tag) tagsRow.appendChild(Editor.makeTagChip(tag));
+        }
+        item.appendChild(tagsRow);
+      }
+
       item.addEventListener('click', () => {
-        closeModal('search-modal');
+        App.closeSearchPage();
         App.viewEntry(e.id);
       });
       container.appendChild(item);
     }
   }
 
-  // ── 渲染標籤篩選 ──
-  function renderTagFilter() {
-    const list = document.getElementById('search-tag-list');
-    list.innerHTML = '';
-    for (const tag of TagManager.getFlat()) {
-      const chip = document.createElement('span');
-      chip.className = 'tag-chip';
-      chip.style.cursor = 'pointer';
-      chip.style.background  = tag.color + '22';
-      chip.style.color       = tag.color;
-      chip.style.border      = `1px solid ${tag.color}44`;
-      chip.textContent       = tag.name;
-      chip.dataset.id        = tag.id;
-      chip.dataset.selected  = 'false';
-      chip.onclick = () => {
-        const sel = chip.dataset.selected === 'true';
-        chip.dataset.selected = sel ? 'false' : 'true';
-        chip.style.opacity = sel ? '1' : '0.5';
-        chip.style.textDecoration = sel ? '' : 'line-through';
-      };
-      list.appendChild(chip);
+  // ── 初始化標籤篩選狀態 ──
+  let _selectedFilterTagIds = [];
+
+  function initTagFilter() {
+    _selectedFilterTagIds = [];
+    renderSelectedFilterChips();
+    document.getElementById('tag-filter-label').textContent = '標籤篩選';
+  }
+
+  // ── 渲染標籤篩選下拉 ──
+  function renderTagFilterDropdown() {
+    const dd = document.getElementById('tag-filter-dropdown');
+    dd.innerHTML = '';
+    const flat = TagManager.getFlat();
+    if (!flat.length) {
+      const empty = document.createElement('div');
+      empty.style.cssText = 'padding:10px 12px;font-size:12px;color:var(--text-3)';
+      empty.textContent = '尚無標籤';
+      dd.appendChild(empty);
+      return;
+    }
+    for (const tag of flat) {
+      const item = document.createElement('div');
+      const sel  = _selectedFilterTagIds.includes(tag.id);
+      item.className = 'tag-filter-item' + (sel ? ' selected' : '');
+      item.style.paddingLeft = tag._depth ? `${12 + tag._depth * 14}px` : '12px';
+
+      const check = document.createElement('span');
+      check.className = 'tag-filter-check';
+      check.textContent = sel ? '✓' : '';
+
+      const dot = document.createElement('span');
+      dot.className = 'tag-color-dot';
+      dot.style.background = tag.color;
+      dot.style.flexShrink = '0';
+
+      const name = document.createElement('span');
+      name.textContent = tag.name;
+
+      item.appendChild(check);
+      item.appendChild(dot);
+      item.appendChild(name);
+      item.addEventListener('mousedown', (e) => {
+        e.preventDefault();
+        if (_selectedFilterTagIds.includes(tag.id)) {
+          _selectedFilterTagIds = _selectedFilterTagIds.filter(id => id !== tag.id);
+        } else {
+          _selectedFilterTagIds.push(tag.id);
+        }
+        renderTagFilterDropdown();
+        renderSelectedFilterChips();
+        updateTagFilterBtn();
+      });
+      dd.appendChild(item);
     }
   }
 
+  function renderSelectedFilterChips() {
+    const area = document.getElementById('selected-filter-tags');
+    area.innerHTML = '';
+    for (const tagId of _selectedFilterTagIds) {
+      const tag = TagManager.getById(tagId);
+      if (!tag) continue;
+      const chip = document.createElement('span');
+      chip.className = 'tag-chip';
+      chip.style.cssText = `background:${tag.color}22;color:${tag.color};border:1px solid ${tag.color}44;cursor:pointer`;
+      const dot = document.createElement('span');
+      dot.className = 'tag-color-dot';
+      dot.style.background = tag.color;
+      const nm = document.createElement('span');
+      nm.textContent = tag.name;
+      const x = document.createElement('span');
+      x.className = 'tag-x';
+      x.textContent = '✕';
+      x.onclick = () => {
+        _selectedFilterTagIds = _selectedFilterTagIds.filter(id => id !== tagId);
+        renderSelectedFilterChips();
+        updateTagFilterBtn();
+      };
+      chip.appendChild(dot);
+      chip.appendChild(nm);
+      chip.appendChild(x);
+      area.appendChild(chip);
+    }
+  }
+
+  function updateTagFilterBtn() {
+    const n = _selectedFilterTagIds.length;
+    document.getElementById('tag-filter-label').textContent =
+      n > 0 ? `標籤篩選 (${n})` : '標籤篩選';
+    document.getElementById('tag-filter-btn').classList.toggle('active', n > 0);
+  }
+
   function getSelectedTagFilters() {
-    return [...document.querySelectorAll('#search-tag-list .tag-chip[data-selected="true"]')]
-      .map(el => el.dataset.id);
+    return [..._selectedFilterTagIds];
   }
 
   return { run, renderResults, renderTagFilter, getSelectedTagFilters };
