@@ -1179,19 +1179,40 @@ img { max-width: 100%; display: block; }
   transition: background 0.12s;
 }
 .stp-create:hover { background: var(--surface-2); }
-/* 手機：從底部彈出 */
+/* 手機：全螢幕覆蓋（搜尋框在頂部，不受鍵盤干擾）*/
+.stp-topbar { display: none; }
+
 @media (max-width: 640px) {
   .smart-tag-picker {
     position: fixed !important;
-    left: 0 !important;
-    right: 0 !important;
-    bottom: 0 !important;
-    top: auto !important;
+    inset: 0 !important;
     width: 100% !important;
-    max-width: none;
-    max-height: 60dvh;
-    border-radius: 16px 16px 0 0;
+    max-width: none !important;
+    max-height: none !important;
+    border-radius: 0 !important;
+    z-index: 400;
   }
+  .stp-topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 16px 10px;
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+    background: var(--surface);
+  }
+  .stp-topbar-title { font-size: 15px; font-weight: 600; color: var(--primary); }
+  .stp-done-btn {
+    font-size: 15px;
+    color: var(--primary);
+    font-weight: 600;
+    padding: 4px 12px;
+    border: 1px solid var(--accent);
+    border-radius: 50px;
+    transition: all 0.15s;
+  }
+  .stp-done-btn:hover { background: var(--primary); color: #fff; }
+  #stp-input { font-size: 16px; } /* 防止 iOS 縮放 */
 }
 
 /* ── # Mention 標籤選取器 ── */

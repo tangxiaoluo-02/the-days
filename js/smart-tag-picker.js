@@ -30,9 +30,7 @@ const SmartTagPicker = (() => {
   }
 
   function close() {
-    const picker = getEl();
-    picker.classList.add('hidden');
-    picker.style.bottom = ''; // 重置，避免下次位置錯誤
+    getEl().classList.add('hidden');
   }
 
   // ── 渲染列表 ──
@@ -171,25 +169,11 @@ const SmartTagPicker = (() => {
     getEl().addEventListener('click', (e) => e.stopPropagation());
     document.addEventListener('click', () => close());
 
-    // iOS Safari：鍵盤彈出時，bottom sheet 往上移動到鍵盤上方
-    if (window.visualViewport) {
-      window.visualViewport.addEventListener('resize', () => {
-        const picker = getEl();
-        if (picker.classList.contains('hidden')) return;
-        if (window.innerWidth <= 640) {
-          const vv        = window.visualViewport;
-          const kbHeight  = window.innerHeight - vv.height - (vv.offsetTop || 0);
-          picker.style.bottom = Math.max(kbHeight, 0) + 'px';
-        }
-      });
-      window.visualViewport.addEventListener('scroll', () => {
-        const picker = getEl();
-        if (picker.classList.contains('hidden') || window.innerWidth > 640) return;
-        const vv = window.visualViewport;
-        const kbHeight = window.innerHeight - vv.height - (vv.offsetTop || 0);
-        picker.style.bottom = Math.max(kbHeight, 0) + 'px';
-      });
-    }
+    // 完成按鈕（手機版）
+    document.querySelector('.stp-done-btn').addEventListener('click', (e) => {
+      e.stopPropagation();
+      close();
+    });
   }
 
   return { init, open, close };
