@@ -265,42 +265,54 @@ const Editor = (() => {
     return marked.parse(withLinks, { breaks: true, gfm: true });
   }
 
-  // ── 照片壓縮（轉 WebP，縮小至最大 1920px，品質 85%）──
-  // 規則：壓縮後若反而更大，直接使用原始檔案
+  // ── 照片壓縮：逐步縮小直到 ≤ 1MB ──
+  const COMPRESS_TARGET = 1 * 1024 * 1024; // 1MB
+
   async function compressImage(file) {
+    // 已經夠小就跳過
+    if (file.size <= COMPRESS_TARGET) return file;
+
     return new Promise((resolve) => {
       const img = new Image();
-      img.onload = () => {
-        const MAX = 1920;
-        let { width, height } = img;
-        const needResize = width > MAX;
+      img.onload = async () => {
+        const srcW = img.width, srcH = img.height;
+        const aspect = srcW / srcH;
 
-        // 不需要縮小，且原始檔案已經很小（< 300KB），直接跳過壓縮
-        if (!needResize && file.size < 300 * 1024) {
-          resolve(file);
-          return;
-        }
+        // 從大到小嘗試，直到輸出 ≤ 1MB
+        const steps = [
+          { maxW: 1920, quality: 0.85 },
+          { maxW: 1280, quality: 0.82 },
+          { maxW: 960,  quality: 0.78 },
+          { maxW: 640,  quality: 0.75 },
+          { maxW: 640,  quality: 0.60 }, // 保底
+        ];
 
-        if (needResize) {
-          height = Math.round(height * MAX / width);
-          width = MAX;
-        }
-        const canvas = document.createElement('canvas');
-        canvas.width = width;
-        canvas.height = height;
-        canvas.getContext('2d').drawImage(img, 0, 0, width, height);
-        canvas.toBlob((blob) => {
-          if (!blob) { resolve(file); return; }
-          // 🔑 壓縮後反而更大 → 使用原始檔案
-          if (blob.size >= file.size) {
-            resolve(file);
+        for (const step of steps) {
+          const w = Math.min(srcW, step.maxW);
+          const h = Math.round(w / aspect);
+
+          const canvas = document.createElement('canvas');
+          canvas.width = w; canvas.height = h;
+          canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+
+          const blob = await new Promise(res =>
+            canvas.toBlob(res, 'image/webp', step.quality)
+          );
+
+          if (blob && blob.size <= COMPRESS_TARGET) {
+            const out = new File(
+              [blob],
+              file.name.replace(/\.[^.]+$/, '.webp'),
+              { type: 'image/webp' }
+            );
+            out._exifTime = file._exifTime;
+            resolve(out);
             return;
           }
-          const name = file.name.replace(/\.[^.]+$/, '.webp');
-          const compressed = new File([blob], name, { type: 'image/webp' });
-          compressed._exifTime = file._exifTime;
-          resolve(compressed);
-        }, 'image/webp', 0.85);
+        }
+
+        // 理論上不會跑到這裡，但以防萬一
+        resolve(file);
       };
       img.onerror = () => resolve(file);
       img.src = URL.createObjectURL(file);
