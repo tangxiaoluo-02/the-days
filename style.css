@@ -878,6 +878,41 @@ img { max-width: 100%; display: block; }
 .tag-filter-item:hover { background: var(--surface-2); }
 .tag-filter-check { width: 14px; font-size: 11px; color: var(--success); font-weight: 700; flex-shrink: 0; }
 
+/* 時間段篩選列 */
+#search-date-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+  flex-wrap: wrap;
+}
+.date-bar-label { font-size: 13px; color: var(--text-3); }
+#search-date-bar input[type="date"] {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 4px 8px;
+  font-size: 13px;
+  background: var(--surface-2);
+  outline: none;
+  color: var(--text);
+  flex: 1;
+  min-width: 120px;
+}
+#search-date-bar input[type="date"]:focus { border-color: var(--accent); }
+.date-bar-sep { font-size: 13px; color: var(--text-3); }
+#filter-date-clear {
+  font-size: 12px;
+  color: var(--text-3);
+  padding: 3px 7px;
+  border: 1px solid var(--border);
+  border-radius: 50px;
+  transition: all 0.15s;
+}
+#filter-date-clear:hover { color: var(--danger); border-color: var(--danger); }
+
 /* 已選標籤 chip */
 #selected-filter-tags {
   display: flex;

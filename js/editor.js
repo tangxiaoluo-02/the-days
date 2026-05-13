@@ -266,26 +266,43 @@ const Editor = (() => {
   }
 
   // ── 照片壓縮（轉 WebP，縮小至最大 1920px，品質 85%）──
+  // 規則：壓縮後若反而更大，直接使用原始檔案
   async function compressImage(file) {
     return new Promise((resolve) => {
       const img = new Image();
       img.onload = () => {
         const MAX = 1920;
         let { width, height } = img;
-        if (width > MAX) { height = Math.round(height * MAX / width); width = MAX; }
+        const needResize = width > MAX;
+
+        // 不需要縮小，且原始檔案已經很小（< 300KB），直接跳過壓縮
+        if (!needResize && file.size < 300 * 1024) {
+          resolve(file);
+          return;
+        }
+
+        if (needResize) {
+          height = Math.round(height * MAX / width);
+          width = MAX;
+        }
         const canvas = document.createElement('canvas');
         canvas.width = width;
         canvas.height = height;
         canvas.getContext('2d').drawImage(img, 0, 0, width, height);
         canvas.toBlob((blob) => {
           if (!blob) { resolve(file); return; }
+          // 🔑 壓縮後反而更大 → 使用原始檔案
+          if (blob.size >= file.size) {
+            resolve(file);
+            return;
+          }
           const name = file.name.replace(/\.[^.]+$/, '.webp');
           const compressed = new File([blob], name, { type: 'image/webp' });
           compressed._exifTime = file._exifTime;
           resolve(compressed);
         }, 'image/webp', 0.85);
       };
-      img.onerror = () => resolve(file); // 壓縮失敗就用原檔
+      img.onerror = () => resolve(file);
       img.src = URL.createObjectURL(file);
     });
   }

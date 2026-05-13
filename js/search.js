@@ -77,6 +77,12 @@ const Search = (() => {
       // 篩選器
       if (filters.hasPhoto && !e.has_photos) return false;
       if (filters.hasLink  && !e.has_links)  return false;
+
+      // 時間段篩選（比較本地日期字串）
+      const entryDate = e.created_at.slice(0, 10);
+      if (filters.dateFrom && entryDate < filters.dateFrom) return false;
+      if (filters.dateTo   && entryDate > filters.dateTo)   return false;
+
       if (filters.tags?.length) {
         const matchTag = filters.tags.every(tagId => e.tags?.includes(tagId));
         if (!matchTag) return false;

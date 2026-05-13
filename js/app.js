@@ -223,6 +223,10 @@ const App = (() => {
     document.getElementById('search-input').addEventListener('keydown', (e) => {
       if (e.key === 'Enter') doSearch();
     });
+    document.getElementById('filter-date-clear').addEventListener('click', () => {
+      document.getElementById('filter-date-from').value = '';
+      document.getElementById('filter-date-to').value   = '';
+    });
     // 標籤篩選下拉
     document.getElementById('tag-filter-btn').addEventListener('click', (e) => {
       e.stopPropagation();
@@ -432,7 +436,9 @@ const App = (() => {
     const hasPhoto = document.getElementById('filter-has-photo').checked;
     const hasLink  = document.getElementById('filter-has-link').checked;
     const tagIds   = Search.getSelectedTagFilters();
-    const results  = Search.run(q, { hasPhoto, hasLink, tags: tagIds });
+    const dateFrom = document.getElementById('filter-date-from').value;
+    const dateTo   = document.getElementById('filter-date-to').value;
+    const results  = Search.run(q, { hasPhoto, hasLink, tags: tagIds, dateFrom, dateTo });
 
     document.getElementById('search-hint').classList.add('hidden');
     document.getElementById('search-empty').classList.toggle('hidden', results.length > 0);
