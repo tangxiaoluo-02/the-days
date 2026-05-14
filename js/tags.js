@@ -264,5 +264,10 @@ const TagManager = (() => {
     });
   }
 
-  return { load, getAll, getFlat, getById, add, edit, remove, moveTag, renderModal };
+  // ── 匯入專用：取得或建立標籤（以預設顏色建立）──
+  async function getOrCreate(name, parentId) {
+    return await add(name, parentId || null, '#8B6914');
+  }
+
+  return { load, getAll, getFlat, getById, add, edit, remove, moveTag, renderModal, getOrCreate };
 })();

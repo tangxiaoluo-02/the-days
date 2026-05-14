@@ -1120,6 +1120,56 @@ img { max-width: 100%; display: block; }
 }
 .streak-day.active { background: var(--accent); }
 
+/* ── Day One 匯入 ── */
+.import-box { max-width: 560px; }
+.import-step { padding: 20px; }
+.import-instructions { margin-bottom: 20px; }
+.import-how-title { font-size: 14px; font-weight: 600; color: var(--text-2); margin-bottom: 10px; }
+.import-instructions ol { padding-left: 20px; font-size: 14px; line-height: 1.9; color: var(--text); }
+.import-instructions ol li { margin: 2px 0; }
+.import-instructions code { background: var(--surface-2); padding: 1px 6px; border-radius: 4px; font-family: monospace; font-size: 12px; }
+.import-tip { font-size: 13px; color: var(--text-3); background: var(--surface-2); padding: 8px 12px; border-radius: var(--radius-sm); margin-top: 12px; }
+.import-file-btn {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  justify-content: center;
+  padding: 14px 20px;
+  border: 2px dashed var(--border-2);
+  border-radius: var(--radius);
+  cursor: pointer;
+  font-size: 15px;
+  color: var(--text-2);
+  font-weight: 500;
+  transition: all 0.2s;
+  text-align: center;
+}
+.import-file-btn:hover { border-color: var(--accent); color: var(--primary); background: var(--surface-2); }
+.import-analyzing { display: flex; align-items: center; gap: 10px; margin-top: 12px; font-size: 13px; color: var(--text-3); justify-content: center; }
+.import-summary {
+  background: var(--surface-2);
+  border-radius: var(--radius);
+  padding: 16px 20px;
+  margin-bottom: 16px;
+}
+.import-summary-title { font-size: 15px; font-weight: 600; color: var(--primary); margin-bottom: 10px; }
+.import-summary-row { display: flex; justify-content: space-between; font-size: 13px; padding: 4px 0; border-bottom: 1px solid var(--border); color: var(--text-2); }
+.import-summary-row:last-child { border-bottom: none; }
+.import-summary-val { font-weight: 600; color: var(--text); }
+.import-summary-stats { display: flex; justify-content: center; gap: 40px; margin-bottom: 12px; }
+.import-stat { text-align: center; }
+.import-stat-num { font-size: 36px; font-weight: 700; color: var(--primary); line-height: 1; }
+.import-stat-label { font-size: 12px; color: var(--text-3); margin-top: 4px; }
+.import-date-range { text-align: center; font-size: 13px; color: var(--text-2); padding-top: 8px; border-top: 1px solid var(--border); }
+.import-warning { font-size: 12px; color: var(--text-3); background: #FFF8E1; padding: 8px 12px; border-radius: var(--radius-sm); border-left: 3px solid #FFC107; margin-bottom: 16px; }
+.import-progress-wrap { background: var(--surface-2); border-radius: 50px; height: 12px; overflow: hidden; margin-bottom: 12px; }
+#import-progress-bar { height: 100%; background: linear-gradient(90deg, var(--primary), var(--accent)); border-radius: 50px; width: 0%; transition: width 0.3s ease; }
+.import-progress-text { text-align: center; font-size: 15px; font-weight: 600; color: var(--primary); margin-bottom: 6px; }
+.import-current-entry { text-align: center; font-size: 12px; color: var(--text-3); min-height: 20px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.import-done { text-align: center; padding: 10px 0; }
+.import-done-icon { font-size: 56px; margin-bottom: 16px; }
+.import-done-text { font-size: 15px; color: var(--text-2); margin-bottom: 20px; line-height: 1.7; }
+
 /* ── 回收桶 ── */
 #trash-list { padding: 12px 20px; display: flex; flex-direction: column; gap: 8px; }
 .trash-item {

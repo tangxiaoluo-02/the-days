@@ -249,5 +249,20 @@ const EntryManager = (() => {
     };
   }
 
-  return { load, create, update, remove, getEntry, getIndex };
+  // ── 匯入專用：直接新增已建好的 entry（不儲存索引，批次結束後再呼叫 saveCurrentIndex）──
+  async function addEntry(entry) {
+    const fileDriveId = await Drive.saveEntry(entry);
+    fullCache.set(entry.id, entry);
+    // 加入索引（不立即寫 Drive，等批次完成後統一儲存）
+    const summary = makeSummary(entry, fileDriveId);
+    index.entries.push(summary);
+  }
+
+  // ── 匯入專用：批次完成後儲存最終索引 ──
+  async function saveCurrentIndex() {
+    index.entries.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+    await Drive.saveIndex(index);
+  }
+
+  return { load, create, update, remove, getEntry, getIndex, addEntry, saveCurrentIndex };
 })();
