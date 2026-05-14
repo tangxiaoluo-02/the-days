@@ -258,11 +258,35 @@ const EntryManager = (() => {
     index.entries.push(summary);
   }
 
+  // ── 匯入專用：為已存在的 entry 補充照片（不重複新增）──
+  async function addImportedPhotos(id, newPhotos) {
+    if (!newPhotos.length) return;
+    const summary = index.entries.find(e => e.id === id);
+    if (!summary) return;
+
+    // 從 Drive 讀取完整 entry
+    const entry = await Drive.loadEntry(summary.drive_file_id);
+    const existing = entry.photos || [];
+
+    // 避免重複（以 filename 比對）
+    const existingNames = new Set(existing.map(p => p.filename));
+    const toAdd = newPhotos.filter(p => !existingNames.has(p.filename));
+    if (!toAdd.length) return;
+
+    const merged = [...existing, ...toAdd];
+    const updated = { ...entry, photos: merged, has_photos: true };
+
+    await Drive.saveEntry(updated);
+    fullCache.set(id, updated);
+    const idx = index.entries.findIndex(e => e.id === id);
+    if (idx >= 0) index.entries[idx] = makeSummary(updated, summary.drive_file_id);
+  }
+
   // ── 匯入專用：批次完成後儲存最終索引 ──
   async function saveCurrentIndex() {
     index.entries.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
     await Drive.saveIndex(index);
   }
 
-  return { load, create, update, remove, getEntry, getIndex, addEntry, saveCurrentIndex };
+  return { load, create, update, remove, getEntry, getIndex, addEntry, addImportedPhotos, saveCurrentIndex };
 })();

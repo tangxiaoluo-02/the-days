@@ -105,12 +105,13 @@ const DayOneImport = (() => {
     goStep(3);
 
     const total = _parsedEntries.length;
-    let done = 0, errors = 0;
+    let done = 0, newCount = 0, photoOnly = 0, errors = 0;
 
     const setProgress = (msg) => {
       const pct = total > 0 ? Math.round((done / total) * 100) : 0;
       document.getElementById('import-progress-bar').style.width = pct + '%';
-      document.getElementById('import-progress-text').textContent = msg || `匯入中… ${done} / ${total}`;
+      document.getElementById('import-progress-text').textContent =
+        msg || `處理中… ${done} / ${total}`;
     };
 
     setProgress('準備中…');
@@ -125,14 +126,18 @@ const DayOneImport = (() => {
         const preview = (e.text || '').slice(0, 40).replace(/\n/g, ' ');
         document.getElementById('import-current-entry').textContent =
           preview ? `「${preview}…」` : '';
-        await importOneEntry(e);
+
+        const result = await importOneEntry(e);
+        if (result === 'new')       newCount++;
+        else if (result === 'photo-only') photoOnly++;
+
         done++;
-        setProgress(`匯入中… ${done} / ${total}`);
+        setProgress(`處理中… ${done} / ${total}`);
       } catch (err) {
         console.error('[Import] 失敗:', err, e);
         errors++;
         done++;
-        setProgress(`匯入中… ${done} / ${total}（${errors} 筆錯誤）`);
+        setProgress(`處理中… ${done} / ${total}（${errors} 筆錯誤）`);
       }
     }
 
@@ -147,55 +152,59 @@ const DayOneImport = (() => {
     App.refreshCurrentView();
 
     // 顯示完成
+    const lines = [];
+    if (newCount > 0)    lines.push(`新增 ${newCount} 篇日記`);
+    if (photoOnly > 0)   lines.push(`補充 ${photoOnly} 篇的照片`);
+    if (errors > 0)      lines.push(`${errors} 筆因故略過`);
     document.getElementById('import-done-text').textContent =
-      errors > 0
-        ? `完成！成功匯入 ${done - errors} 篇，${errors} 篇因故略過`
-        : `成功匯入 ${done} 篇日記 🎉`;
+      lines.length ? lines.join('、') + ' 🎉' : '沒有需要更新的內容';
 
     goStep(4);
   }
 
   // ══════════════════════════════════
-  //  單篇日記匯入
+  //  單篇日記匯入（含重複偵測）
+  //  回傳 'new' | 'photo-only' | 'skip'
   // ══════════════════════════════════
   async function importOneEntry(dayOneEntry) {
     const createdAt = toLocal(dayOneEntry.creationDate);
     const updatedAt = toLocal(dayOneEntry.modifiedDate || dayOneEntry.creationDate);
 
-    // ── 標籤 ──
+    // 計算此 entry 的 ID
+    const id = dayOneEntry.uuid
+      ? dayOneEntry.uuid.toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 32)
+      : 'imp_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7);
+
+    // ── 重複偵測 ──
+    const existingSummary = EntryManager.getIndex().find(e => e.id === id);
+
+    if (existingSummary) {
+      // 已存在：只補充照片（若已有照片則略過）
+      if (existingSummary.has_photos) return 'skip';  // 已有照片，不重複
+      const photos = await uploadPhotos(dayOneEntry.photos || [], createdAt);
+      if (photos.length > 0) {
+        await EntryManager.addImportedPhotos(id, photos);
+        return 'photo-only';
+      }
+      return 'skip';
+    }
+
+    // ── 全新 entry ──
+
+    // 標籤
     const tagIds = [];
     if (Array.isArray(dayOneEntry.tags)) {
       for (const tagName of dayOneEntry.tags) {
         if (tagName?.trim()) {
-          const id = await TagManager.getOrCreate(tagName.trim());
-          tagIds.push(id);
+          tagIds.push(await TagManager.getOrCreate(tagName.trim()));
         }
       }
     }
 
-    // ── 照片 ──
-    const photos = [];
-    if (Array.isArray(dayOneEntry.photos) && _zipFile) {
-      for (const p of dayOneEntry.photos) {
-        try {
-          const file = await extractPhoto(p);
-          if (file) {
-            const yearMonth = createdAt.slice(0, 7);
-            const compressed = await compressForImport(file);
-            const driveId = await Drive.uploadPhoto(compressed, yearMonth);
-            photos.push({
-              drive_file_id: driveId,
-              filename: file.name,
-              taken_at: p.date ? toLocal(p.date) : null,
-            });
-          }
-        } catch (err) {
-          console.warn('[Import] 照片略過:', err);
-        }
-      }
-    }
+    // 照片
+    const photos = await uploadPhotos(dayOneEntry.photos || [], createdAt);
 
-    // ── 天氣 ──
+    // 天氣
     let weather = null;
     if (dayOneEntry.weather) {
       const w = dayOneEntry.weather;
@@ -207,13 +216,12 @@ const DayOneImport = (() => {
       };
     }
 
-    // ── 位置 ──
+    // 位置
     let location = null;
     if (dayOneEntry.location) {
       const loc = dayOneEntry.location;
       const parts = [loc.placeName, loc.localityName, loc.administrativeArea, loc.country]
         .map(s => s?.trim()).filter(Boolean);
-      // 去重（Day One 有時 placeName = localityName）
       const unique = [...new Set(parts)];
       if (unique.length) {
         location = {
@@ -224,12 +232,7 @@ const DayOneImport = (() => {
       }
     }
 
-    // ── 組裝 entry ──
     const content = dayOneEntry.text || '';
-    const id = dayOneEntry.uuid
-      ? dayOneEntry.uuid.toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 32)
-      : 'imp_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7);
-
     const entry = {
       id,
       created_at:  createdAt,
@@ -245,6 +248,31 @@ const DayOneImport = (() => {
     };
 
     await EntryManager.addEntry(entry);
+    return 'new';
+  }
+
+  // ── 上傳一篇 entry 的所有照片，回傳 photo 物件陣列 ──
+  async function uploadPhotos(dayOnePhotos, createdAt) {
+    const photos = [];
+    if (!Array.isArray(dayOnePhotos) || !_zipFile) return photos;
+    for (const p of dayOnePhotos) {
+      try {
+        const file = await extractPhoto(p);
+        if (file) {
+          const yearMonth = createdAt.slice(0, 7);
+          const compressed = await compressForImport(file);
+          const driveId = await Drive.uploadPhoto(compressed, yearMonth);
+          photos.push({
+            drive_file_id: driveId,
+            filename: file.name,
+            taken_at: p.date ? toLocal(p.date) : null,
+          });
+        }
+      } catch (err) {
+        console.warn('[Import] 照片上傳失敗（略過）:', err);
+      }
+    }
+    return photos;
   }
 
   // ══════════════════════════════════
