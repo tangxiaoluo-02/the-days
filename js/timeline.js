@@ -123,78 +123,12 @@ const Timeline = (() => {
     head.innerHTML = `${formatDayLabel(dateKey)} <span class="cnt">· ${entries.length} 則</span>`;
     row.appendChild(head);
 
-    if (entries.length === 1) {
-      row.appendChild(renderEntryCard(entries[0]));
-    } else {
-      for (const entry of entries) row.appendChild(renderEntryCompact(entry));
-    }
+    for (const entry of entries) row.appendChild(renderEntryCompact(entry));
 
     return row;
   }
 
-  // ── 單篇日記（當天只有 1 則時用，保留完整卡片：照片/標籤/meta）──
-  function renderEntryCard(entry) {
-    const card = document.createElement('div');
-    card.className = 'entry-card';
-    card.dataset.id = entry.id;
-
-    const time = document.createElement('div');
-    time.className = 'entry-card-time';
-    time.textContent = formatTime(entry.created_at);
-
-    const preview = document.createElement('div');
-    preview.className = 'entry-card-preview';
-    preview.textContent = entry.preview || '（無文字內容）';
-
-    card.appendChild(time);
-    card.appendChild(preview);
-
-    if (entry.tags?.length) {
-      const tagsRow = document.createElement('div');
-      tagsRow.className = 'entry-card-tags';
-      for (const tagId of entry.tags) {
-        const tag = TagManager.getAll().find(t => t.id === tagId);
-        if (tag) tagsRow.appendChild(Editor.makeTagChip(tag));
-      }
-      card.appendChild(tagsRow);
-    }
-
-    if (entry.has_photos && entry.first_photo) {
-      const photos = document.createElement('div');
-      photos.className = 'entry-card-photos';
-      const img = document.createElement('img');
-      img.className = 'entry-thumb';
-      img.alt = '照片';
-      img.style.background = 'var(--surface-2)';
-      Drive.getPhotoUrl(entry.first_photo).then(url => { img.src = url; });
-      photos.appendChild(img);
-      card.appendChild(photos);
-    }
-
-    const meta = document.createElement('div');
-    meta.className = 'entry-card-meta';
-    if (entry.weather) {
-      const w = document.createElement('span');
-      w.textContent = `${entry.weather.icon} ${entry.weather.condition}`;
-      meta.appendChild(w);
-    }
-    if (entry.location?.name) {
-      const l = document.createElement('span');
-      l.textContent = `📍 ${entry.location.name}`;
-      meta.appendChild(l);
-    }
-    if (entry.word_count) {
-      const wc = document.createElement('span');
-      wc.textContent = `${entry.word_count} 字`;
-      meta.appendChild(wc);
-    }
-    if (meta.children.length) card.appendChild(meta);
-
-    card.addEventListener('click', () => App.viewEntry(entry.id));
-    return card;
-  }
-
-  // ── 多篇日記濃縮列（同一天有 2 篇以上時用）──
+  // ── 精簡列（時間軸統一用這個呈現，不分單篇/多篇）──
   function renderEntryCompact(entry) {
     const el = document.createElement('div');
     el.className = 'entry-compact';
