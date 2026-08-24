@@ -6,7 +6,9 @@ const Gallery = (() => {
     const empty     = document.getElementById('gallery-empty');
     container.innerHTML = '';
 
-    const withPhotos = entries.filter(e => e.has_photos && e.first_photo);
+    const withPhotos = entries
+      .filter(e => e.has_photos && e.first_photo)
+      .sort((a, b) => new Date(b.created_at) - new Date(a.created_at)); // 依日記時間排序，不是插入順序
 
     if (!withPhotos.length) {
       empty.classList.remove('hidden');

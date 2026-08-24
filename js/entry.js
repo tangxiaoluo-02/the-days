@@ -78,6 +78,8 @@ const EntryManager = (() => {
     // ① 立即更新本機，讓 UI 馬上刷新
     fullCache.set(id, entry);
     index.entries.unshift(makeSummary(entry, null));
+    // 補記過去日期時，不能只塞在最前面，要照日記時間重新排序
+    index.entries.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
 
     // ② 背景上傳（不等待）
     _uploadInBackground(id, entry, photoFiles).catch(e => {
