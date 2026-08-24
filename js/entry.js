@@ -148,7 +148,7 @@ const EntryManager = (() => {
     await Drive.saveIndex(index);
   }
 
-  // ── 更新日記 ──
+  // ── 更新日記（立即回應 + 背景上傳，跟 create 同一套邏輯）──
   async function update(id, data) {
     let entry = fullCache.get(id);
     if (!entry) {
@@ -158,32 +158,29 @@ const EntryManager = (() => {
       fullCache.set(id, entry);
     }
 
-    // 保留使用者沒刪除的舊照片
+    // 保留使用者沒刪除的舊照片（已經有真實 drive_file_id，不需要重傳）
     const keepIds = new Set(data.keepPhotoIds || entry.photos.map(p => p.drive_file_id));
     const keptOldPhotos = entry.photos.filter(p => keepIds.has(p.drive_file_id));
 
-    // 上傳新照片（一定保留，不受 keepPhotoIds 篩選影響）
-    const newlyUploaded = [];
-    for (const photoFile of (data.newPhotoFiles || [])) {
-      const yearMonth = entry.created_at.slice(0, 7);
-      const driveId = await Drive.uploadPhoto(photoFile, yearMonth);
-      newlyUploaded.push({
-        drive_file_id: driveId,
-        filename: photoFile.name,
-        taken_at: photoFile._exifTime || null,
-      });
-    }
-
-    const filteredPhotos = [...keptOldPhotos, ...newlyUploaded];
+    // 新照片：先給臨時 ID + blob URL，讓 UI 立刻看得到，不等真正上傳完成
+    const newPhotoFiles = data.newPhotoFiles || [];
+    const tempIds = [];
+    const tempPhotos = newPhotoFiles.map((file, i) => {
+      const tempId = `_tmp_${id}_edit_${Date.now()}_${i}`;
+      tempIds.push(tempId);
+      const blobUrl = URL.createObjectURL(file);
+      Drive.registerBlobUrl(tempId, blobUrl);
+      return { drive_file_id: tempId, filename: file.name, taken_at: file._exifTime || null };
+    });
 
     const updated = {
       ...entry,
       updated_at:  new Date().toISOString(),
       content:     data.content ?? entry.content,
       tags:        data.tags    ?? entry.tags,
-      photos:      filteredPhotos,
+      photos:      [...keptOldPhotos, ...tempPhotos],
       has_links:   hasLinks(data.content ?? entry.content),
-      has_photos:  filteredPhotos.length > 0,
+      has_photos:  (keptOldPhotos.length + tempPhotos.length) > 0,
       weather:     data.weather  ?? entry.weather,
       location:    data.location ?? entry.location,
       word_count:  wordCount(data.content ?? entry.content),
@@ -191,17 +188,51 @@ const EntryManager = (() => {
     };
 
     const driveId = driveIdMap.get(id) || index.entries.find(e => e.id === id)?.drive_file_id;
-    await Drive.saveEntry(updated);
-    fullCache.set(id, updated);
 
-    // 更新索引
+    // ① 立即更新本機，讓 UI 馬上刷新
+    fullCache.set(id, updated);
     const idx = index.entries.findIndex(e => e.id === id);
     if (idx >= 0) index.entries[idx] = makeSummary(updated, driveId);
-    // 重新排序（時間可能被修改）
     index.entries.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
-    await Drive.saveIndex(index);
+
+    // ② 背景上傳新照片、存回 Drive（不等待）
+    _updateInBackground(id, updated, newPhotoFiles, tempIds, keptOldPhotos, entry.created_at, driveId).catch(e => {
+      console.error('背景同步失敗', e);
+      App.toast('雲端同步失敗，請稍後重試', 'error');
+    });
 
     return updated;
+  }
+
+  async function _updateInBackground(id, optimisticEntry, newPhotoFiles, tempIds, keptOldPhotos, entryCreatedAt, driveId) {
+    let finalPhotos = keptOldPhotos;
+
+    if (newPhotoFiles.length > 0) {
+      const uploaded = [];
+      for (let i = 0; i < newPhotoFiles.length; i++) {
+        const file      = newPhotoFiles[i];
+        const yearMonth = entryCreatedAt.slice(0, 7);
+        const realDriveId = await Drive.uploadPhoto(file, yearMonth);
+        Drive.renameBlobUrl(tempIds[i], realDriveId);
+        uploaded.push({
+          drive_file_id: realDriveId,
+          filename: file.name,
+          taken_at: file._exifTime || null,
+        });
+      }
+      finalPhotos = [...keptOldPhotos, ...uploaded];
+    }
+
+    const finalEntry = { ...optimisticEntry, photos: finalPhotos, has_photos: finalPhotos.length > 0 };
+    await Drive.saveEntry(finalEntry);
+    fullCache.set(id, finalEntry);
+
+    const idx = index.entries.findIndex(e => e.id === id);
+    if (idx >= 0) index.entries[idx] = makeSummary(finalEntry, driveId);
+    await Drive.saveIndex(index);
+
+    App.toast('已同步到雲端 ✓', 'success');
+    App.refreshCurrentView();
   }
 
   // ── 刪除日記（移到回收桶） ──

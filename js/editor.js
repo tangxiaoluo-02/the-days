@@ -546,29 +546,24 @@ const Editor = (() => {
       location:      Editor._pendingLocation,
     };
 
-    if (editingId) {
-      // 編輯：仍需等待（需更新已存在的 entry）
-      App.showLoading('更新日記中…');
-      try {
+    // 新增／編輯都一樣：立即關閉、立即顯示，照片在背景上傳
+    try {
+      if (editingId) {
         await EntryManager.update(editingId, data);
-        App.toast('日記已更新 ✓', 'success');
-        closeModal('editor-modal');
-        App.refreshCurrentView();
-      } catch (e) {
-        App.toast('更新失敗：' + e.message, 'error');
-      } finally {
-        App.hideLoading();
-      }
-    } else {
-      // 新增：立即關閉，背景上傳
-      await EntryManager.create(data);      // 立即返回（背景繼續跑）
-      closeModal('editor-modal');
-      App.refreshCurrentView();             // 立即顯示日記
-      if (pendingPhotos.length > 0) {
-        App.toast('日記已儲存，照片上傳中… ⏫', '');
       } else {
-        App.toast('日記已儲存 ✓', 'success');
+        await EntryManager.create(data);
       }
+    } catch (e) {
+      App.toast((editingId ? '更新失敗：' : '儲存失敗：') + e.message, 'error');
+      return;
+    }
+
+    closeModal('editor-modal');
+    App.refreshCurrentView();
+    if (pendingPhotos.length > 0) {
+      App.toast((editingId ? '日記已更新，照片上傳中… ⏫' : '日記已儲存，照片上傳中… ⏫'), '');
+    } else {
+      App.toast((editingId ? '日記已更新 ✓' : '日記已儲存 ✓'), 'success');
     }
   }
 
