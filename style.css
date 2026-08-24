@@ -732,11 +732,15 @@ svg.spark { width: 100%; height: 44px; display: block; }
   position: absolute;
 }
 
-/* ── Editor area ── */
-#editor-area {
+/* ── 編輯視窗內容捲動區（時間/標籤/工具列/內文/照片都在這裡面一起捲） ── */
+.editor-scroll {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
+}
+
+/* ── Editor area ── */
+#editor-area {
   display: flex;
   flex-direction: column;
 }
@@ -1653,17 +1657,11 @@ svg.spark { width: 100%; height: 44px; display: block; }
     overflow-y: auto;
   }
 
-  /* 各固定區塊不縮小 */
+  /* 各固定區塊不縮小（標題列跟底部按鈕列永遠固定，中間內容一起捲動） */
   .modal-header,
-  .editor-meta,
-  .editor-tags,
-  .editor-toolbar,
-  .editor-photos,
   .modal-footer { flex-shrink: 0; }
 
-  /* 文字區塊填滿剩餘空間 */
-  #editor-area { flex: 1; min-height: 0; overflow-y: auto; }
-  #entry-content { min-height: 100%; max-height: none; resize: none; }
+  #entry-content { min-height: 200px; resize: none; }
 
   /* meta 欄位緊湊顯示 */
   .editor-meta {
