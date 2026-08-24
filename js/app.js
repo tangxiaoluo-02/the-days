@@ -11,7 +11,7 @@ function closeModal(id) {
 }
 
 const App = (() => {
-  let currentView = 'calendar';
+  let currentView = 'today';
 
   // ════════════════════════
   //  初始化
@@ -76,10 +76,10 @@ const App = (() => {
       e.stopPropagation();
     });
 
-    // 視圖切換
-    document.querySelectorAll('.view-tabs .tab').forEach(btn => {
+    // 視圖切換（只綁定有 data-view 的分頁，搜尋按鈕雖然視覺上同排但走自己的邏輯）
+    document.querySelectorAll('.view-tabs .tab[data-view]').forEach(btn => {
       btn.addEventListener('click', () => {
-        document.querySelectorAll('.view-tabs .tab').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('.view-tabs .tab[data-view]').forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
         switchView(btn.dataset.view);
       });
@@ -87,6 +87,7 @@ const App = (() => {
 
     // 新增日記
     document.getElementById('new-entry-btn').addEventListener('click', () => Editor.open());
+    document.getElementById('today-prompt-btn').addEventListener('click', () => Editor.open());
 
     // 時間軸折疊/展開
     document.getElementById('collapse-all-btn').addEventListener('click', () => Timeline.collapseAll());
@@ -301,9 +302,11 @@ const App = (() => {
 
   function refreshCurrentView() {
     const entries = EntryManager.getIndex();
+    if (currentView === 'today')    Today.render(entries);
     if (currentView === 'timeline') Timeline.render(entries);
     if (currentView === 'calendar') Calendar.render(entries);
     if (currentView === 'gallery')  Gallery.render(entries);
+    Stats.renderMini(entries);
   }
 
   // ════════════════════════

@@ -201,5 +201,52 @@ const Stats = (() => {
     return section;
   }
 
-  return { render };
+  // ── 常駐統計面板（側欄迷你版） ──
+  function renderMini(entries) {
+    const tilesEl = document.getElementById('stats-panel-tiles');
+    const sparkEl = document.getElementById('stats-panel-spark');
+    if (!tilesEl || !sparkEl) return;
+
+    if (!entries.length) {
+      tilesEl.innerHTML = '<p style="color:var(--text-3);font-size:12px;grid-column:1/-1">還沒有資料</p>';
+      sparkEl.innerHTML = '';
+      return;
+    }
+
+    const totalWords = entries.reduce((s, e) => s + (e.word_count || 0), 0);
+    const streak      = calcStreak(entries);
+    const avg         = Math.round(totalWords / entries.length);
+
+    const tiles = [
+      { n: entries.length, l: '總篇數' },
+      { n: streak,         l: '連續天數' },
+      { n: totalWords,     l: '總字數' },
+      { n: avg,             l: '平均字數' },
+    ];
+    tilesEl.innerHTML = tiles
+      .map(t => `<div class="stat-tile"><div class="n">${t.n.toLocaleString('zh-TW')}</div><div class="l">${t.l}</div></div>`)
+      .join('');
+
+    // 近 7 天寫作頻率（每日篇數折線圖）
+    const counts = [];
+    for (let i = 6; i >= 0; i--) {
+      const s = localDateStr(new Date(Date.now() - i * 86400000));
+      counts.push(entries.filter(e => e.created_at.slice(0, 10) === s).length);
+    }
+    const max = Math.max(1, ...counts);
+    const w = 200, h = 44;
+    const pts = counts.map((c, i) => {
+      const x = (i / (counts.length - 1)) * w;
+      const y = h - (c / max) * (h - 6) - 3;
+      return `${x.toFixed(1)},${y.toFixed(1)}`;
+    }).join(' ');
+    const lastY = h - (counts[counts.length - 1] / max) * (h - 6) - 3;
+    sparkEl.innerHTML = `
+      <svg class="spark" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none">
+        <polyline points="${pts}" fill="none" stroke="var(--primary)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+        <circle cx="${w}" cy="${lastY.toFixed(1)}" r="3.5" fill="var(--primary)"/>
+      </svg>`;
+  }
+
+  return { render, renderMini };
 })();

@@ -21,60 +21,101 @@
   <!-- ── 主應用畫面 ── -->
   <div id="app-screen" class="hidden">
 
-    <!-- 頂部導航（單行） -->
-    <header id="app-header">
-      <div class="header-left">
-        <span class="app-logo">🌅</span>
-        <span class="app-title">The Days</span>
-      </div>
-      <div class="header-center">
-        <div class="view-tabs">
-          <button class="tab" data-view="timeline">時間軸</button>
-          <button class="tab active" data-view="calendar">月曆</button>
-          <button class="tab" data-view="gallery">畫廊</button>
+    <!-- 側邊導航 -->
+    <aside id="app-sidebar">
+      <div class="sidebar-top">
+        <div class="brand">
+          <span class="app-logo">🌅</span>
+          <span class="app-title">The Days</span>
         </div>
-      </div>
-      <div class="header-right">
-        <button id="search-btn" title="搜尋">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+        <button id="new-entry-btn" title="新增日記">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>
+          <span>新增日記</span>
         </button>
-        <!-- 設定按鈕 + 下拉選單 -->
-        <div class="settings-wrap">
-          <button id="settings-btn" title="設定">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
-          </button>
-          <div id="settings-menu" class="settings-menu hidden">
-            <div class="menu-user">
-              <img id="user-avatar" src="" alt="">
-              <span id="user-name"></span>
-            </div>
-            <div class="menu-divider"></div>
-            <button id="stats-btn" class="menu-item">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 20V10M12 20V4M6 20v-6"/></svg>
-              寫作統計
-            </button>
-            <button id="tags-btn" class="menu-item">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2H2v10l9.29 9.29a1 1 0 0 0 1.42 0l7.58-7.58a1 1 0 0 0 0-1.42Z"/><circle cx="7" cy="7" r="1" fill="currentColor" stroke="none"/></svg>
-              標籤管理
-            </button>
-            <button id="trash-btn" class="menu-item">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6m3 0V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
-              回收桶
-            </button>
-            <div class="menu-divider"></div>
-            <button id="import-btn" class="menu-item">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-              從 Day One 匯入
-            </button>
-            <div class="menu-divider"></div>
-            <button id="logout-btn" class="menu-item menu-item-danger">登出</button>
+      </div>
+
+      <nav class="view-tabs">
+        <button class="tab active" data-view="today">
+          <svg class="tab-ic" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9.5 12 3l9 6.5V20a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1Z"/></svg>
+          <span class="tab-label">今日</span>
+        </button>
+        <button class="tab" data-view="timeline">
+          <svg class="tab-ic" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>
+          <span class="tab-label">時間軸</span>
+        </button>
+        <button class="tab" data-view="calendar">
+          <svg class="tab-ic" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+          <span class="tab-label">月曆</span>
+        </button>
+        <button class="tab" data-view="gallery">
+          <svg class="tab-ic" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>
+          <span class="tab-label">畫廊</span>
+        </button>
+        <button id="search-btn" class="tab" title="搜尋">
+          <svg class="tab-ic" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+          <span class="tab-label">搜尋</span>
+        </button>
+      </nav>
+
+      <!-- 設定按鈕 + 下拉選單 -->
+      <div class="sidebar-bottom settings-wrap">
+        <button id="settings-btn" class="tab" title="更多">
+          <svg class="tab-ic" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+          <span class="tab-label">更多</span>
+        </button>
+        <div id="settings-menu" class="settings-menu hidden">
+          <div class="menu-user">
+            <img id="user-avatar" src="" alt="">
+            <span id="user-name"></span>
           </div>
+          <div class="menu-divider"></div>
+          <button id="stats-btn" class="menu-item">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 20V10M12 20V4M6 20v-6"/></svg>
+            寫作統計
+          </button>
+          <button id="tags-btn" class="menu-item">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2H2v10l9.29 9.29a1 1 0 0 0 1.42 0l7.58-7.58a1 1 0 0 0 0-1.42Z"/><circle cx="7" cy="7" r="1" fill="currentColor" stroke="none"/></svg>
+            標籤管理
+          </button>
+          <button id="trash-btn" class="menu-item">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6m3 0V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
+            回收桶
+          </button>
+          <div class="menu-divider"></div>
+          <button id="import-btn" class="menu-item">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            從 Day One 匯入
+          </button>
+          <div class="menu-divider"></div>
+          <button id="logout-btn" class="menu-item menu-item-danger">登出</button>
         </div>
       </div>
-    </header>
+    </aside>
 
     <!-- 主內容 -->
+    <div id="content-wrap">
     <main id="main-content">
+
+      <!-- 今日視圖 -->
+      <div id="today-view" class="view">
+        <div class="today-greet-row">
+          <div class="today-greet" id="today-greet"></div>
+          <div class="today-date" id="today-date"></div>
+        </div>
+
+        <div class="prompt-card">
+          <div>
+            <div class="prompt-label">今日提示</div>
+            <div class="prompt-q" id="today-prompt-text"></div>
+          </div>
+          <button id="today-prompt-btn">開始寫</button>
+        </div>
+
+        <div id="otd-section"></div>
+
+        <div class="section-title">最近日記</div>
+        <div id="today-recent-list"></div>
+      </div>
 
       <!-- 時間軸視圖 -->
       <div id="timeline-view" class="view hidden">
@@ -90,7 +131,7 @@
       </div>
 
       <!-- 月曆視圖 -->
-      <div id="calendar-view" class="view">
+      <div id="calendar-view" class="view hidden">
         <div id="calendar-header">
           <button id="cal-prev">‹</button>
           <h2 id="cal-title"></h2>
@@ -115,8 +156,13 @@
 
     </main>
 
-    <!-- 新增日記按鈕 -->
-    <button id="new-entry-btn" title="新增日記">＋</button>
+    <aside id="stats-panel">
+      <h3>寫作統計</h3>
+      <div class="stat-grid" id="stats-panel-tiles"></div>
+      <div class="spark-label">近 7 天寫作頻率</div>
+      <div id="stats-panel-spark"></div>
+    </aside>
+    </div>
 
   </div>
 
@@ -454,6 +500,7 @@
   <script src="js/search.js"></script>
   <script src="js/weather.js"></script>
   <script src="js/stats.js"></script>
+  <script src="js/today.js"></script>
   <script src="js/import.js"></script>
   <script src="js/app.js"></script>
 
