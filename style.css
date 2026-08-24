@@ -22,7 +22,7 @@
   --radius:     10px;
   --radius-sm:  6px;
   --sidebar-w:  212px;
-  --bottombar-h: 58px;
+  --bottombar-h: 64px;
 }
 
 /* ── Reset ── */
@@ -336,24 +336,32 @@ svg.spark { width: 100%; height: 44px; display: block; }
 .month-body { padding-left: 16px; display: none; }
 .month-group.open .month-body { display: block; padding-bottom: 6px; }
 
-.day-row { padding: 10px 0 2px; }
-.day-head { font-size: 12.5px; font-weight: 600; color: var(--text-2); margin-bottom: 6px; }
+.day-row { padding: 10px 0 2px; min-width: 0; }
+.day-head { font-size: 13px; font-weight: 600; color: var(--text-2); margin-bottom: 6px; }
 .day-head .cnt { color: var(--text-3); font-weight: 400; }
 
-/* 多篇日記濃縮列（同一天 2 篇以上） */
+/* 精簡列（時間軸每則日記都用這個呈現） */
 .entry-compact {
   display: flex;
   align-items: baseline;
   gap: 8px;
-  padding: 5px 8px;
+  padding: 6px 8px;
   border-radius: var(--radius-sm);
   cursor: pointer;
-  font-size: 12.5px;
+  font-size: 13.5px;
   transition: background 0.15s;
+  min-width: 0;
 }
 .entry-compact:hover { background: var(--surface-2); }
 .entry-compact .ct { color: var(--text-3); flex: none; width: 62px; }
-.entry-compact .cp { color: var(--text-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.entry-compact .cp {
+  color: var(--text-2);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+  min-width: 0;
+}
 
 .entry-card {
   background: var(--surface);
@@ -1579,17 +1587,19 @@ svg.spark { width: 100%; height: 44px; display: block; }
   .sidebar-top { flex-direction: row; align-items: center; gap: 6px; }
   .brand { display: none; }
   #new-entry-btn {
-    width: 42px; height: 42px; padding: 0; border-radius: 50%;
+    width: 46px; height: 46px; padding: 0; border-radius: 50%;
     flex-shrink: 0;
   }
+  #new-entry-btn svg { width: 18px; height: 18px; }
   #new-entry-btn span { display: none; }
 
   .view-tabs { flex: 1; flex-direction: row; justify-content: space-around; gap: 0; }
   .view-tabs .tab,
   #settings-btn {
-    flex-direction: column; gap: 2px; padding: 6px 4px; width: auto; text-align: center;
+    flex-direction: column; gap: 3px; padding: 8px 4px; width: auto; text-align: center;
   }
-  .tab-label { font-size: 10px; }
+  .tab-ic { width: 22px; height: 22px; }
+  .tab-label { font-size: 11px; }
 
   .sidebar-bottom { margin-top: 0; padding-top: 0; border-top: none; flex-shrink: 0; }
   .settings-menu { bottom: calc(100% + 6px); left: auto; right: 4px; }
