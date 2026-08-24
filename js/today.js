@@ -90,23 +90,27 @@ const Today = (() => {
     const list = document.getElementById('today-recent-list');
     list.innerHTML = '';
 
-    if (!entries.length) {
+    const todayStr = localDateStr(new Date());
+    const todayEntries = entries
+      .filter(e => e.created_at.slice(0, 10) === todayStr)
+      .sort((a, b) => a.created_at.localeCompare(b.created_at)); // 時間正序，早的在上面
+
+    if (!todayEntries.length) {
       list.innerHTML = `
         <div class="empty-state">
           <div class="empty-icon">📖</div>
-          <p>還沒有日記，點左側「新增日記」開始記錄吧！</p>
+          <p>今天還沒有日記，點左側「新增日記」開始記錄吧！</p>
         </div>`;
       return;
     }
 
-    for (const e of entries.slice(0, 6)) {
+    for (const e of todayEntries) {
       const card = document.createElement('div');
       card.className = 'entry-card';
 
       const time = document.createElement('div');
       time.className = 'entry-card-time';
-      const d = new Date(e.created_at);
-      time.textContent = `${d.getMonth() + 1}/${d.getDate()} · ${formatTime(e.created_at)}`;
+      time.textContent = formatTime(e.created_at);
 
       const preview = document.createElement('div');
       preview.className = 'entry-card-preview';
