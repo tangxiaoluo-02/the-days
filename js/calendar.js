@@ -139,17 +139,8 @@ const Calendar = (() => {
       item.appendChild(time);
       item.appendChild(preview);
 
-      if (e.has_photos && e.first_photo) {
-        const photos = document.createElement('div');
-        photos.className = 'entry-card-photos';
-        const img = document.createElement('img');
-        img.className = 'entry-thumb';
-        img.alt = '照片';
-        img.style.background = 'var(--surface-2)';
-        Drive.getPhotoUrl(e.first_photo).then(url => { img.src = url; });
-        photos.appendChild(img);
-        item.appendChild(photos);
-      }
+      const thumbs = renderEntryThumbs(e);
+      if (thumbs) item.appendChild(thumbs);
 
       // 顯示標籤
       if (e.tags?.length) {

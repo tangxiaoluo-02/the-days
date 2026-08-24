@@ -278,6 +278,7 @@ const EntryManager = (() => {
       weather:    entry.weather,
       location:   entry.location,
       first_photo: entry.photos[0]?.drive_file_id || null,
+      photo_ids:  entry.photos.slice(0, 3).map(p => p.drive_file_id),
       drive_file_id: driveId,
     };
   }

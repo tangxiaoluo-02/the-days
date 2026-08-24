@@ -119,17 +119,8 @@ const Today = (() => {
       card.appendChild(time);
       card.appendChild(preview);
 
-      if (e.has_photos && e.first_photo) {
-        const photos = document.createElement('div');
-        photos.className = 'entry-card-photos';
-        const img = document.createElement('img');
-        img.className = 'entry-thumb';
-        img.alt = '照片';
-        img.style.background = 'var(--surface-2)';
-        Drive.getPhotoUrl(e.first_photo).then(url => { img.src = url; });
-        photos.appendChild(img);
-        card.appendChild(photos);
-      }
+      const thumbs = renderEntryThumbs(e);
+      if (thumbs) card.appendChild(thumbs);
 
       card.addEventListener('click', () => App.viewEntry(e.id));
       list.appendChild(card);
