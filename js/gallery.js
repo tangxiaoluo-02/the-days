@@ -18,6 +18,16 @@ const Gallery = (() => {
     empty.classList.add('hidden');
     container.classList.remove('hidden');
 
+    // 捲到快看到時才真的去抓照片，避免資料一多打開畫廊就同時塞爆幾百個下載請求
+    const observer = new IntersectionObserver((observed) => {
+      for (const o of observed) {
+        if (!o.isIntersecting) continue;
+        const img = o.target;
+        Drive.getPhotoUrl(img.dataset.photoId).then(url => { img.src = url; });
+        observer.unobserve(img);
+      }
+    }, { rootMargin: '600px' }); // 提前一點載入，正常速度捲動不會看到空白閃現
+
     for (const entry of withPhotos) {
       const item = document.createElement('div');
       item.className = 'gallery-item';
@@ -26,7 +36,8 @@ const Gallery = (() => {
       img.alt = entry.preview || '';
       img.style.minHeight = '80px';
       img.style.background = 'var(--surface-2)';
-      Drive.getPhotoUrl(entry.first_photo).then(url => { img.src = url; });
+      img.dataset.photoId = entry.first_photo;
+      observer.observe(img);
 
       const overlay = document.createElement('div');
       overlay.className = 'gallery-item-overlay';
