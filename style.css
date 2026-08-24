@@ -295,40 +295,65 @@ svg.spark { width: 100%; height: 44px; display: block; }
 }
 .view-toolbar button:hover { border-color: var(--accent); color: var(--primary); }
 
-.timeline-day { margin-bottom: 4px; }
+/* ── 版面：主列表 + 右側年份跳轉 ── */
+.tl-layout { display: flex; gap: 4px; align-items: flex-start; }
+.tl-body { flex: 1; min-width: 0; }
+.tl-rail {
+  width: 42px;
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  position: sticky;
+  top: 8px;
+}
+.tl-rail button {
+  font-size: 11.5px;
+  color: var(--text-3);
+  padding: 5px 2px;
+  border-radius: var(--radius-sm);
+  transition: all 0.15s;
+}
+.tl-rail button:hover { color: var(--primary); }
+.tl-rail button.cur { color: var(--primary); font-weight: 700; background: var(--surface-2); }
 
-.timeline-day-header {
+/* ── 月分組 ── */
+.month-group { border-bottom: 1px solid var(--border); }
+.month-header {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 8px 0;
+  padding: 11px 2px;
   cursor: pointer;
   user-select: none;
 }
-.timeline-day-header:hover .day-label { color: var(--primary); }
+.month-header:hover .m-label { color: var(--primary); }
+.m-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); flex-shrink: 0; }
+.m-label { font-size: 15px; font-weight: 700; color: var(--text); flex: 1; transition: color 0.15s; }
+.m-count { font-size: 11.5px; color: var(--text-3); background: var(--surface-2); padding: 2px 8px; border-radius: 50px; }
+.m-chev { font-size: 12px; color: var(--text-3); transition: transform 0.2s; }
+.month-group.open .m-chev { transform: rotate(90deg); }
+.month-body { padding-left: 16px; display: none; }
+.month-group.open .month-body { display: block; padding-bottom: 6px; }
 
-.day-dot {
-  width: 12px; height: 12px;
-  border-radius: 50%;
-  background: var(--accent);
-  flex-shrink: 0;
-}
-.day-label {
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--text-2);
-  transition: color 0.15s;
-}
-.day-count {
-  font-size: 12px;
-  color: var(--text-3);
-  background: var(--surface-2);
-  padding: 1px 7px;
-  border-radius: 50px;
-}
-.day-toggle { font-size: 12px; color: var(--text-3); margin-left: auto; }
+.day-row { padding: 10px 0 2px; }
+.day-head { font-size: 12.5px; font-weight: 600; color: var(--text-2); margin-bottom: 6px; }
+.day-head .cnt { color: var(--text-3); font-weight: 400; }
 
-.timeline-day-entries { padding-left: 22px; }
+/* 多篇日記濃縮列（同一天 2 篇以上） */
+.entry-compact {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 5px 8px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-size: 12.5px;
+  transition: background 0.15s;
+}
+.entry-compact:hover { background: var(--surface-2); }
+.entry-compact .ct { color: var(--text-3); flex: none; width: 62px; }
+.entry-compact .cp { color: var(--text-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 .entry-card {
   background: var(--surface);
@@ -359,29 +384,6 @@ svg.spark { width: 100%; height: 44px; display: block; }
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
-/* 折疊狀態：只顯示加粗第一行 */
-.entry-card.collapsed {
-  padding: 10px 16px;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-.entry-card.collapsed .entry-card-time {
-  margin-bottom: 0;
-  flex-shrink: 0;
-}
-.entry-card.collapsed .entry-card-preview {
-  -webkit-line-clamp: 1;
-  white-space: nowrap;
-  font-weight: 700;
-  font-size: 14px;
-  margin: 0;
-  flex: 1;
-  min-width: 0;
-}
-.entry-card.collapsed .entry-card-tags,
-.entry-card.collapsed .entry-card-photos,
-.entry-card.collapsed .entry-card-meta { display: none; }
 .entry-card-photos {
   display: flex;
   gap: 6px;
@@ -1604,6 +1606,9 @@ svg.spark { width: 100%; height: 44px; display: block; }
   }
   .stat-grid { grid-template-columns: repeat(4, 1fr); }
   .stat-tile { padding: 8px 6px; text-align: center; }
+
+  /* 時間軸：手機不顯示年份跳轉軌，畫面較窄 */
+  .tl-rail { display: none; }
 
   /* 一般 modal：從底部彈出 */
   .modal { padding: 0; align-items: flex-end; }

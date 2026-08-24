@@ -120,13 +120,18 @@
       <!-- 時間軸視圖 -->
       <div id="timeline-view" class="view hidden">
         <div class="view-toolbar">
-          <button id="collapse-all-btn">全部折疊</button>
+          <button id="collapse-all-btn">全部收合</button>
           <button id="expand-all-btn">全部展開</button>
         </div>
-        <div id="timeline-container"></div>
-        <div id="timeline-empty" class="empty-state hidden">
-          <div class="empty-icon">📖</div>
-          <p>還沒有日記，點右下角 + 開始記錄吧！</p>
+        <div class="tl-layout">
+          <div class="tl-body">
+            <div id="timeline-container"></div>
+            <div id="timeline-empty" class="empty-state hidden">
+              <div class="empty-icon">📖</div>
+              <p>還沒有日記，點左側「新增日記」開始記錄吧！</p>
+            </div>
+          </div>
+          <div id="timeline-rail" class="tl-rail"></div>
         </div>
       </div>
 
