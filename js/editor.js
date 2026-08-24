@@ -204,7 +204,7 @@ const Editor = (() => {
       create.textContent = `＋ 建立標籤「${query}」`;
       create.addEventListener('mousedown', async (e) => {
         e.preventDefault();
-        const id = await TagManager.add(query, null, '#8B6914');
+        const id = await TagManager.add(query, null, '#2E6E96');
         const newTag = TagManager.getAll().find(t => t.id === id);
         if (newTag) insertMention(newTag);
       });
@@ -513,7 +513,7 @@ const Editor = (() => {
       e.stopPropagation();
       const name = input.value.trim();
       if (!name) return;
-      const id = await TagManager.add(name, null, '#8B6914');
+      const id = await TagManager.add(name, null, '#2E6E96');
       selectedTags.push(id);
       input.value = '';
       renderTagPicker();

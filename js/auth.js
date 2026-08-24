@@ -26,8 +26,8 @@ const Auth = (() => {
         },
       });
 
-      // 嘗試從 sessionStorage 還原 token
-      const saved = sessionStorage.getItem('td_token');
+      // 嘗試從 localStorage 還原 token
+      const saved = localStorage.getItem('td_token');
       if (saved) {
         const { token, expiry, user } = JSON.parse(saved);
         if (Date.now() < expiry) {
@@ -52,7 +52,7 @@ const Auth = (() => {
     })
     .then(r => r.json())
     .then(user => {
-      sessionStorage.setItem('td_token', JSON.stringify({
+      localStorage.setItem('td_token', JSON.stringify({
         token: accessToken,
         expiry: tokenExpiry,
         user: { name: user.name, picture: user.picture, email: user.email }
@@ -75,7 +75,7 @@ const Auth = (() => {
     }
     accessToken = null;
     tokenExpiry = 0;
-    sessionStorage.removeItem('td_token');
+    localStorage.removeItem('td_token');
     onLogoutCb && onLogoutCb();
   }
 
@@ -83,7 +83,7 @@ const Auth = (() => {
     if (!accessToken || Date.now() >= tokenExpiry) {
       // Token 過期，靜默刷新
       await new Promise((resolve) => {
-        const saved = sessionStorage.getItem('td_token');
+        const saved = localStorage.getItem('td_token');
         if (saved) {
           const { expiry } = JSON.parse(saved);
           if (Date.now() >= expiry) {

@@ -114,9 +114,9 @@ const SmartTagPicker = (() => {
               let parentTag = TagManager.getAll().find(t => t.name === parentName && !t.parent_id);
               const parentId = parentTag
                 ? parentTag.id
-                : await TagManager.add(parentName, null, '#8B6914');
+                : await TagManager.add(parentName, null, '#2E6E96');
               // 建立子標籤
-              const childId = await TagManager.add(childName, parentId, '#8B6914');
+              const childId = await TagManager.add(childName, parentId, '#2E6E96');
               App.hideLoading();
               selectedIds.push(childId);
               getInput().value = '';
@@ -137,7 +137,7 @@ const SmartTagPicker = (() => {
           createItem.addEventListener('mousedown', async (e) => {
             e.preventDefault();
             App.showLoading('建立標籤…');
-            const id = await TagManager.add(displayQ, null, '#8B6914');
+            const id = await TagManager.add(displayQ, null, '#2E6E96');
             App.hideLoading();
             selectedIds.push(id);
             getInput().value = '';

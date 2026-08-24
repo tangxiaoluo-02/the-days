@@ -38,7 +38,7 @@ const TagManager = (() => {
 
     const id = 'tag_' + Date.now();
     const order = tags.filter(t => t.parent_id === (parentId || null)).length;
-    tags.push({ id, name, parent_id: parentId || null, color: color || '#8B6914', order });
+    tags.push({ id, name, parent_id: parentId || null, color: color || '#2E6E96', order });
     await save();
     return id;
   }
@@ -266,7 +266,7 @@ const TagManager = (() => {
 
   // ── 匯入專用：取得或建立標籤（以預設顏色建立）──
   async function getOrCreate(name, parentId) {
-    return await add(name, parentId || null, '#8B6914');
+    return await add(name, parentId || null, '#2E6E96');
   }
 
   return { load, getAll, getFlat, getById, add, edit, remove, moveTag, renderModal, getOrCreate };
