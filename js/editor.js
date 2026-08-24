@@ -535,11 +535,12 @@ const Editor = (() => {
     const [dy, dm, dd]  = datePart.split('-').map(Number);
     const [dh, dmin]    = timePart.split(':').map(Number);
     const datetime = toLocalISOString(new Date(dy, dm - 1, dd, dh, dmin, 0));
+    const processedPhotos = await Promise.all(pendingPhotos.map(p => p.compress ? compressImage(p.file) : p.file));
     const data = {
       content, datetime,
       tags:          selectedTags,
-      photoFiles:    await Promise.all(pendingPhotos.map(p => p.compress ? compressImage(p.file) : p.file)),
-      newPhotoFiles: await Promise.all(pendingPhotos.map(p => p.compress ? compressImage(p.file) : p.file)),
+      photoFiles:    processedPhotos, // 新增日記用
+      newPhotoFiles: processedPhotos, // 編輯日記用
       keepPhotoIds,
       weather:       Editor._pendingWeather,
       location:      Editor._pendingLocation,

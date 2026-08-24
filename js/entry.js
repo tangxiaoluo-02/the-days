@@ -158,21 +158,23 @@ const EntryManager = (() => {
       fullCache.set(id, entry);
     }
 
-    // 處理新照片
-    const newPhotos = [...entry.photos];
+    // 保留使用者沒刪除的舊照片
+    const keepIds = new Set(data.keepPhotoIds || entry.photos.map(p => p.drive_file_id));
+    const keptOldPhotos = entry.photos.filter(p => keepIds.has(p.drive_file_id));
+
+    // 上傳新照片（一定保留，不受 keepPhotoIds 篩選影響）
+    const newlyUploaded = [];
     for (const photoFile of (data.newPhotoFiles || [])) {
       const yearMonth = entry.created_at.slice(0, 7);
       const driveId = await Drive.uploadPhoto(photoFile, yearMonth);
-      newPhotos.push({
+      newlyUploaded.push({
         drive_file_id: driveId,
         filename: photoFile.name,
         taken_at: photoFile._exifTime || null,
       });
     }
 
-    // 移除被刪掉的照片
-    const keepIds = new Set(data.keepPhotoIds || newPhotos.map(p => p.drive_file_id));
-    const filteredPhotos = newPhotos.filter(p => keepIds.has(p.drive_file_id));
+    const filteredPhotos = [...keptOldPhotos, ...newlyUploaded];
 
     const updated = {
       ...entry,
