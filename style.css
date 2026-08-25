@@ -1579,6 +1579,33 @@ svg.spark { width: 100%; height: 44px; display: block; }
 #loading-text { font-size: 14px; color: var(--text-2); }
 @keyframes spin { to { transform: rotate(360deg); } }
 
+/* ── 同步中提示（不擋互動的小徽章） ── */
+#sync-status {
+  position: fixed;
+  top: max(10px, env(safe-area-inset-top));
+  right: 10px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 6px 12px;
+  font-size: 12px;
+  color: var(--text-2);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  box-shadow: var(--shadow);
+  z-index: 300;
+  pointer-events: none; /* 不擋底下的按鈕，殿下隨時都能點 */
+}
+.sync-spinner {
+  width: 10px; height: 10px;
+  border: 2px solid var(--border);
+  border-top-color: var(--primary);
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+  flex-shrink: 0;
+}
+
 /* ── 響應式 ── */
 @media (max-width: 640px) {
   /* 手機：側邊導航變成底部列 */

@@ -3,13 +3,27 @@ const EntryManager = (() => {
   let index = { entries: [] };   // 快速摘要索引
   let fullCache = new Map();     // 完整日記快取 { entryId -> entry }
   let driveIdMap = new Map();    // entryId -> drive file id
+  let loadPromise = null;        // 追蹤 load() 進度，讓寫入操作可以安全等它完成再動手
 
-  // ── 初始化：從 Drive 載入索引 ──
-  async function load() {
-    index = await Drive.loadIndex();
-    // 確保欄位存在
-    if (!Array.isArray(index.entries)) index.entries = [];
-    return index;
+  // ── 初始化：從 Drive 載入索引（重複呼叫只會真的跑一次，避免後面的呼叫把
+  //    前面已經寫入的新日記蓋掉——這是殿下能「連線中也能立刻寫」的關鍵）──
+  function load() {
+    if (loadPromise) return loadPromise; // 已經在跑或跑完了，直接沿用同一份，不要重新抓一次
+    loadPromise = (async () => {
+      index = await Drive.loadIndex();
+      // 確保欄位存在
+      if (!Array.isArray(index.entries)) index.entries = [];
+      return index;
+    })();
+    // 失敗的話清掉，讓之後的寫入操作有機會重新嘗試載入
+    loadPromise.catch(() => { loadPromise = null; });
+    return loadPromise;
+  }
+
+  // 確保 index 已經是從雲端載入的最新版本，才動手寫入——
+  // 避免「殿下在資料還沒載完時就新增日記」導致稍後 load() 完成時把剛寫的東西覆蓋掉
+  async function ensureLoaded() {
+    await load();
   }
 
   // ── 生成 UUID ──
@@ -51,6 +65,7 @@ const EntryManager = (() => {
 
   // ── 建立新日記（立即回應 + 背景上傳）──
   async function create(data) {
+    await ensureLoaded(); // 確保雲端索引已經載入完成，才動手寫，避免被稍後才完成的 load() 蓋掉
     const id  = uuid();
     const now = data.datetime || toLocalISOString(new Date());
     const photoFiles = data.photoFiles || [];
@@ -152,6 +167,7 @@ const EntryManager = (() => {
 
   // ── 更新日記（立即回應 + 背景上傳，跟 create 同一套邏輯）──
   async function update(id, data) {
+    await ensureLoaded();
     let entry = fullCache.get(id);
     if (!entry) {
       const summary = index.entries.find(e => e.id === id);
@@ -254,6 +270,7 @@ const EntryManager = (() => {
   // ── 取得完整日記 ──
   async function getEntry(id) {
     if (fullCache.has(id)) return fullCache.get(id);
+    await ensureLoaded();
     const summary = index.entries.find(e => e.id === id);
     if (!summary) throw new Error('Entry not found');
     const entry = await Drive.loadEntry(summary.drive_file_id);

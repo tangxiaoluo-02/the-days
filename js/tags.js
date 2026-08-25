@@ -1,10 +1,22 @@
 // ── 標籤管理模組 ──
 const TagManager = (() => {
   let tags = [];  // 扁平陣列，含 parent_id
+  let loadPromise = null;
 
-  async function load() {
-    const data = await Drive.loadTags();
-    tags = data.tags || [];
+  // 重複呼叫只會真的跑一次，避免後面的呼叫把前面已經新增的標籤蓋掉
+  function load() {
+    if (loadPromise) return loadPromise;
+    loadPromise = (async () => {
+      const data = await Drive.loadTags();
+      tags = data.tags || [];
+    })();
+    loadPromise.catch(() => { loadPromise = null; });
+    return loadPromise;
+  }
+
+  // 確保標籤已經從雲端載入完成，才動手新增/修改，避免被稍後才完成的 load() 蓋掉
+  async function ensureLoaded() {
+    await load();
   }
 
   async function save() {
@@ -30,6 +42,7 @@ const TagManager = (() => {
   function getById(id) { return tags.find(t => t.id === id); }
 
   async function add(name, parentId, color) {
+    await ensureLoaded();
     // 防呆：同名同層不重複建立
     const existing = tags.find(t =>
       t.name === name && t.parent_id === (parentId || null)
@@ -44,6 +57,7 @@ const TagManager = (() => {
   }
 
   async function edit(id, name, color) {
+    await ensureLoaded();
     const tag = tags.find(t => t.id === id);
     if (!tag) return;
     tag.name  = name;
@@ -52,6 +66,7 @@ const TagManager = (() => {
   }
 
   async function remove(id) {
+    await ensureLoaded();
     const children = tags.filter(t => t.parent_id === id);
     const toDelete = new Set([id, ...children.map(c => c.id)]);
     tags = tags.filter(t => !toDelete.has(t.id));

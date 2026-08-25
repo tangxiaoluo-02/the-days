@@ -34,16 +34,22 @@ const App = (() => {
     document.getElementById('login-screen').classList.add('hidden');
     document.getElementById('app-screen').classList.remove('hidden');
 
-    showLoading('連接 Google 雲端硬碟…');
+    // 先用現有（可能還是空的）資料渲染一次，讓殿下可以立刻按「新增日記」開始寫，
+    // 不用等雲端資料回來——實際存檔時 EntryManager/TagManager 內部會自己等資料
+    // 載完才動手寫，不會因為搶快而把稍後載入的資料蓋掉。
+    refreshCurrentView();
+
+    const syncEl = document.getElementById('sync-status');
+    syncEl.classList.remove('hidden');
     try {
       await Drive.init();
       await Promise.all([EntryManager.load(), TagManager.load()]);
-      refreshCurrentView();
+      refreshCurrentView(); // 真正的資料到了，再刷新一次畫面
     } catch (e) {
-      toast('載入失敗：' + e.message, 'error');
+      toast('雲端同步失敗，請檢查網路連線：' + e.message, 'error');
       console.error(e);
     } finally {
-      hideLoading();
+      syncEl.classList.add('hidden');
     }
   }
 
