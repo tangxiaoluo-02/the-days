@@ -10,6 +10,47 @@ const Editor = (() => {
   const photoList  = () => document.getElementById('photo-list');
   const dateInput  = () => document.getElementById('entry-datetime');
 
+  // ── 草稿自動暫存（存在本機瀏覽器，寫沒存也不怕遺失）──
+  const DRAFT_KEY = 'td_draft';
+  let draftDebounceTimer  = null;
+  let draftHandlerBound   = false;
+
+  function loadMatchingDraft(forEditingId) {
+    try {
+      const raw = localStorage.getItem(DRAFT_KEY);
+      if (!raw) return null;
+      const draft = JSON.parse(raw);
+      // editingId 一致（同一篇編輯中，或都是「新增」）才還原，避免草稿張冠李戴
+      return (draft.editingId === forEditingId) ? draft : null;
+    } catch (e) { return null; }
+  }
+
+  function saveDraftNow() {
+    const content = textarea().value;
+    if (!content.trim()) { clearDraft(); return; }
+    try {
+      localStorage.setItem(DRAFT_KEY, JSON.stringify({
+        editingId, content,
+        datetime: dateInput().value,
+        tags: selectedTags,
+        savedAt: Date.now(),
+      }));
+    } catch (e) { /* 儲存空間滿等例外，忽略即可，不影響編輯 */ }
+  }
+
+  function clearDraft() {
+    try { localStorage.removeItem(DRAFT_KEY); } catch (e) {}
+  }
+
+  function bindDraftAutoSave() {
+    if (draftHandlerBound) return;
+    draftHandlerBound = true;
+    textarea().addEventListener('input', () => {
+      clearTimeout(draftDebounceTimer);
+      draftDebounceTimer = setTimeout(saveDraftNow, 1500);
+    });
+  }
+
   // ── 開啟編輯器 ──
   async function open(entry = null) {
     editingId    = entry?.id || null;
@@ -41,8 +82,18 @@ const Editor = (() => {
       }
     }
 
+    // 還原未儲存的草稿（同一篇 / 同樣是新增才還原）
+    const draft = loadMatchingDraft(editingId);
+    if (draft) {
+      textarea().value = draft.content;
+      if (draft.datetime) dateInput().value = draft.datetime;
+      if (draft.tags) selectedTags = [...draft.tags];
+      setTimeout(() => App.toast('已還原上次未儲存的草稿 📝', ''), 150);
+    }
+
     // 渲染標籤選擇
     renderSelectedTags();
+    bindDraftAutoSave();
 
     // 天氣/位置
     document.getElementById('weather-info').textContent = entry?.weather
@@ -558,6 +609,7 @@ const Editor = (() => {
       return;
     }
 
+    clearDraft(); // 存成功了，草稿就不需要了
     closeModal('editor-modal');
     App.refreshCurrentView();
     if (pendingPhotos.length > 0) {

@@ -90,10 +90,13 @@ const Drive = (() => {
   }
 
   async function init() {
-    rootFolderId    = await findOrCreateFolder(CONFIG.DRIVE_FOLDER_NAME);
-    entriesFolderId = await findOrCreateFolder('entries', rootFolderId);
-    photosFolderId  = await findOrCreateFolder('photos',  rootFolderId);
-    trashFolderId   = await findOrCreateFolder('trash',   rootFolderId);
+    rootFolderId = await findOrCreateFolder(CONFIG.DRIVE_FOLDER_NAME);
+    // entries/photos/trash 互不相依，平行查找可以省下不少等待時間
+    [entriesFolderId, photosFolderId, trashFolderId] = await Promise.all([
+      findOrCreateFolder('entries', rootFolderId),
+      findOrCreateFolder('photos',  rootFolderId),
+      findOrCreateFolder('trash',   rootFolderId),
+    ]);
   }
 
   // ── 取得或建立月份子資料夾 ──
