@@ -5,6 +5,7 @@ const Auth = (() => {
   let tokenExpiry  = 0;
   let onLoginCb    = null;
   let onLogoutCb   = null;
+  let _silentAttempt = false; // 是否正在「悄悄續期」，用來決定失敗時要不要跳錯誤提示
 
   function init({ onLogin, onLogout }) {
     onLoginCb  = onLogin;
@@ -22,7 +23,9 @@ const Auth = (() => {
         callback:  handleTokenResponse,
         error_callback: (err) => {
           console.error('OAuth error', err);
-          App.toast('登入失敗，請再試一次', 'error');
+          // 悄悄續期失敗時不要跳錯誤提示，讓使用者安靜地看到登入畫面就好
+          if (!_silentAttempt) App.toast('登入失敗，請再試一次', 'error');
+          _silentAttempt = false;
         },
       });
 
@@ -36,12 +39,20 @@ const Auth = (() => {
           onLoginCb && onLoginCb(user);
           return;
         }
+        // Google 存取權杖大約 1 小時就會過期（這個 App 沒有後端伺服器保管
+        // refresh token，只能拿到短效的 access token，這是 Google 這種
+        // 純前端登入方式的硬性限制）。過期了不代表殿下真的登出了，先悄悄
+        // 試著在背景重新要一次權杖，瀏覽器裡如果還留著 Google 的登入狀態，
+        // 通常不需要殿下再手動點一次「登入」。
+        _silentAttempt = true;
+        tokenClient.requestAccessToken({ prompt: '' });
       }
     };
     tryInit();
   }
 
   function handleTokenResponse(resp) {
+    _silentAttempt = false;
     if (resp.error) return;
     accessToken = resp.access_token;
     tokenExpiry = Date.now() + (resp.expires_in - 60) * 1000;
