@@ -40,6 +40,8 @@ const Calendar = (() => {
       countMap.set(d, (countMap.get(d) || 0) + 1);
     }
 
+    const dayMoods = EntryManager.getAllDayMoods();
+
     // 填充上個月尾巴
     for (let i = firstDay - 1; i >= 0; i--) {
       const day = prevMonthDays - i;
@@ -51,7 +53,7 @@ const Calendar = (() => {
     for (let d = 1; d <= daysInMonth; d++) {
       const dateStr = `${currentYear}-${String(currentMonth + 1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
       const count   = countMap.get(dateStr) || 0;
-      const cell    = makeDayCell(d, false, dateStr, count, dateStr === todayStr, dateStr === selectedDate);
+      const cell    = makeDayCell(d, false, dateStr, count, dateStr === todayStr, dateStr === selectedDate, dayMoods[dateStr]);
       grid.appendChild(cell);
     }
 
@@ -67,7 +69,7 @@ const Calendar = (() => {
     if (selectedDate) showDayEntries(selectedDate);
   }
 
-  function makeDayCell(day, otherMonth, dateStr, count = 0, isToday = false, isSelected = false) {
+  function makeDayCell(day, otherMonth, dateStr, count = 0, isToday = false, isSelected = false, moodId = null) {
     const cell = document.createElement('div');
     cell.className = 'cal-day'
       + (otherMonth ? ' cal-other-month' : '')
@@ -79,7 +81,15 @@ const Calendar = (() => {
     num.textContent = day;
     cell.appendChild(num);
 
-    if (count > 0) {
+    const mood = moodId ? getMood(moodId) : null;
+    if (mood) {
+      // 有記錄心情就顯示插畫，比純圓點更一眼看出整月心情
+      const moodEl = document.createElement('div');
+      moodEl.className = 'cal-mood';
+      moodEl.innerHTML = moodIconSVG(moodId, 15);
+      moodEl.title = mood.label;
+      cell.appendChild(moodEl);
+    } else if (count > 0) {
       const dots = document.createElement('div');
       dots.className = 'cal-day-dots';
       const maxDots = Math.min(count, 3);
@@ -110,15 +120,15 @@ const Calendar = (() => {
       .filter(e => e.created_at.slice(0, 10) === dateStr)
       .sort((a, b) => a.created_at.localeCompare(b.created_at)); // 舊的在上
 
-    if (!entries.length) {
-      panel.classList.add('hidden');
-      return;
-    }
-
     const d = new Date(dateStr + 'T00:00:00');
-    title.textContent = `${d.getFullYear()}年${d.getMonth()+1}月${d.getDate()}日（共 ${entries.length} 則）`;
+    title.textContent = `${d.getFullYear()}年${d.getMonth()+1}月${d.getDate()}日` + (entries.length ? `（共 ${entries.length} 則）` : '');
+
+    renderDayMoodPicker(dateStr);
 
     list.innerHTML = '';
+    if (!entries.length) {
+      list.innerHTML = '<p style="color:var(--text-3);font-size:13px;padding:8px 0">這天還沒有日記</p>';
+    }
     for (const e of entries) {
       const item = document.createElement('div');
       item.className = 'entry-card';
@@ -160,6 +170,32 @@ const Calendar = (() => {
     panel.classList.remove('hidden');
   }
 
+  // ── 當日心情選擇器（跟日記完全脫鉤，殿下回顧完一天後手動記錄整體感覺）──
+  function renderDayMoodPicker(dateStr) {
+    const wrap = document.getElementById('day-mood-picker');
+    wrap.innerHTML = '';
+    const current = EntryManager.getDayMood(dateStr);
+    for (const m of MOODS) {
+      const isActive = current === m.id;
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'mood-btn' + (isActive ? ' active' : '');
+      if (isActive) {
+        btn.style.background = m.color + '22';
+        btn.style.borderColor = m.color;
+      }
+      btn.title = m.label;
+      btn.innerHTML = moodIconSVG(m.id, 26);
+      btn.addEventListener('click', async () => {
+        const newMood = isActive ? null : m.id; // 再點一次取消
+        await EntryManager.setDayMood(dateStr, newMood);
+        App.toast(newMood ? '已記錄這天的心情 ✓' : '已清除這天的心情', 'success');
+        drawCalendar(); // 重繪格子跟面板，反映最新心情
+      });
+      wrap.appendChild(btn);
+    }
+  }
+
   function prevMonth() {
     currentMonth--;
     if (currentMonth < 0) { currentMonth = 11; currentYear--; }
@@ -180,7 +216,7 @@ const Calendar = (() => {
     const now = new Date();
     currentYear  = now.getFullYear();
     currentMonth = now.getMonth();
-    selectedDate = now.toISOString().slice(0, 10);
+    selectedDate = localDateStr(now);
     drawCalendar();
   }
 

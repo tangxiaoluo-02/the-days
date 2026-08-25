@@ -48,6 +48,10 @@ const Stats = (() => {
     // ── 連續天數熱圖（最近 70 天） ──
     container.appendChild(renderStreakHeatmap(entries));
 
+    // ── 心情紀錄（有記錄心情才顯示） ──
+    const moodSection = renderMoodStats();
+    if (moodSection) container.appendChild(moodSection);
+
     // ── 最常使用標籤 Top 5 ──
     container.appendChild(renderTopTags(entries));
   }
@@ -137,6 +141,76 @@ const Stats = (() => {
       bar.appendChild(cell);
     }
     section.appendChild(bar);
+    return section;
+  }
+
+  function renderMoodStats() {
+    const dayMoods = EntryManager.getAllDayMoods();
+    const dayKeys  = Object.keys(dayMoods);
+    if (!dayKeys.length) return null;
+
+    const section = document.createElement('div');
+    const title = document.createElement('div');
+    title.className = 'stats-section-title';
+    title.textContent = '心情分佈（依天數）';
+    section.appendChild(title);
+
+    // ── 分佈長條 ──
+    const moodCount = new Map();
+    for (const day of dayKeys) moodCount.set(dayMoods[day], (moodCount.get(dayMoods[day]) || 0) + 1);
+    const max = Math.max(...moodCount.values());
+
+    const list = document.createElement('div');
+    list.style.cssText = 'display:flex;flex-direction:column;gap:6px;margin-top:6px';
+    for (const m of MOODS) {
+      const cnt = moodCount.get(m.id) || 0;
+      if (!cnt) continue;
+      const row = document.createElement('div');
+      row.style.cssText = 'display:flex;align-items:center;gap:8px;font-size:13px';
+      const namePart = document.createElement('span');
+      namePart.style.cssText = 'min-width:70px;display:inline-flex;align-items:center;gap:5px';
+      namePart.innerHTML = `${moodIconSVG(m.id, 16)} ${m.label}`;
+      const barWrap = document.createElement('div');
+      barWrap.style.cssText = 'flex:1;background:var(--surface-2);border-radius:4px;height:8px;overflow:hidden';
+      const barInner = document.createElement('div');
+      barInner.style.cssText = `width:${(cnt/max*100).toFixed(0)}%;background:${m.color};height:100%;border-radius:4px`;
+      barWrap.appendChild(barInner);
+      const cntPart = document.createElement('span');
+      cntPart.style.cssText = 'color:var(--text-3);min-width:24px;text-align:right';
+      cntPart.textContent = cnt;
+      row.appendChild(namePart);
+      row.appendChild(barWrap);
+      row.appendChild(cntPart);
+      list.appendChild(row);
+    }
+    section.appendChild(list);
+
+    // ── 最近 70 天心情熱力圖 ──
+    const heatTitle = document.createElement('div');
+    heatTitle.className = 'stats-section-title';
+    heatTitle.style.marginTop = '14px';
+    heatTitle.textContent = '最近 70 天心情';
+    section.appendChild(heatTitle);
+
+    const bar = document.createElement('div');
+    bar.className = 'streak-bar';
+    for (let i = 69; i >= 0; i--) {
+      const d = new Date(Date.now() - i * 86400000);
+      const s = localDateStr(d);
+      const cell = document.createElement('div');
+      cell.className = 'streak-day';
+      const moodId = dayMoods[s];
+      if (moodId) {
+        const m = getMood(moodId);
+        cell.style.background = m.color;
+        cell.title = `${s}：${m.label}`;
+      } else {
+        cell.title = `${s}：無心情紀錄`;
+      }
+      bar.appendChild(cell);
+    }
+    section.appendChild(bar);
+
     return section;
   }
 

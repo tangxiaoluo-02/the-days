@@ -118,9 +118,12 @@ const Timeline = (() => {
     const row = document.createElement('div');
     row.className = 'day-row';
 
+    const mood = EntryManager.getDayMood(dateKey);
+    const moodBadge = mood ? ` <span class="day-mood-badge" title="${getMood(mood)?.label || ''}">${moodIconSVG(mood, 16)}</span>` : '';
+
     const head = document.createElement('div');
     head.className = 'day-head';
-    head.innerHTML = `${formatDayLabel(dateKey)} <span class="cnt">· ${entries.length} 則</span>`;
+    head.innerHTML = `${formatDayLabel(dateKey)} <span class="cnt">· ${entries.length} 則</span>${moodBadge}`;
     row.appendChild(head);
 
     for (const entry of entries) row.appendChild(renderEntryCompact(entry));

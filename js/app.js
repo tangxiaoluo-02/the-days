@@ -381,6 +381,11 @@ const App = (() => {
     // meta（天氣、位置）
     const metaEl = document.getElementById('view-meta');
     metaEl.innerHTML = '';
+    const dayMood = EntryManager.getDayMood(entry.created_at.slice(0, 10));
+    if (dayMood) {
+      const m = getMood(dayMood);
+      if (m) metaEl.innerHTML += `<span class="day-mood-badge">${moodIconSVG(dayMood, 16)} ${m.label}</span>`;
+    }
     if (entry.weather) {
       metaEl.innerHTML += `<span>${entry.weather.icon} ${entry.weather.condition} ${entry.weather.temperature}°C</span>`;
     }

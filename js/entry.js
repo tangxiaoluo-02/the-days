@@ -1,6 +1,6 @@
 // ── 日記資料管理模組 ──
 const EntryManager = (() => {
-  let index = { entries: [] };   // 快速摘要索引
+  let index = { entries: [], day_moods: {} };   // 快速摘要索引 + 每日心情（跟日記本身脫鉤，key 是 "YYYY-MM-DD"）
   let fullCache = new Map();     // 完整日記快取 { entryId -> entry }
   let driveIdMap = new Map();    // entryId -> drive file id
   let loadPromise = null;        // 追蹤 load() 進度，讓寫入操作可以安全等它完成再動手
@@ -13,6 +13,7 @@ const EntryManager = (() => {
       index = await Drive.loadIndex();
       // 確保欄位存在
       if (!Array.isArray(index.entries)) index.entries = [];
+      if (!index.day_moods || typeof index.day_moods !== 'object') index.day_moods = {};
       return index;
     })();
     // 失敗的話清掉，讓之後的寫入操作有機會重新嘗試載入
@@ -302,6 +303,22 @@ const EntryManager = (() => {
     };
   }
 
+  // ── 每日心情（跟日記脫鉤，殿下在月曆頁手動記錄「這天整體感覺如何」）──
+  function getDayMood(dateStr) {
+    return index.day_moods[dateStr] || null;
+  }
+
+  function getAllDayMoods() {
+    return index.day_moods;
+  }
+
+  async function setDayMood(dateStr, moodId) {
+    await ensureLoaded();
+    if (moodId) index.day_moods[dateStr] = moodId;
+    else delete index.day_moods[dateStr];
+    await Drive.saveIndex(index);
+  }
+
   // ── 匯入專用：直接新增已建好的 entry（不儲存索引，批次結束後再呼叫 saveCurrentIndex）──
   async function addEntry(entry) {
     const fileDriveId = await Drive.saveEntry(entry);
@@ -341,5 +358,5 @@ const EntryManager = (() => {
     await Drive.saveIndex(index);
   }
 
-  return { load, create, update, remove, getEntry, getIndex, addEntry, addImportedPhotos, saveCurrentIndex };
+  return { load, create, update, remove, getEntry, getIndex, addEntry, addImportedPhotos, saveCurrentIndex, getDayMood, getAllDayMoods, setDayMood };
 })();

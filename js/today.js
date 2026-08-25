@@ -33,8 +33,10 @@ const Today = (() => {
 
     const now = new Date();
     const weekdays = ['日', '一', '二', '三', '四', '五', '六'];
-    document.getElementById('today-date').textContent =
-      `${now.getFullYear()}年${now.getMonth() + 1}月${now.getDate()}日 · 週${weekdays[now.getDay()]}`;
+    const mood = EntryManager.getDayMood(localDateStr(now));
+    const moodBadge = mood ? `<span class="day-mood-badge">${moodIconSVG(mood, 18)} ${getMood(mood).label}</span>` : '';
+    document.getElementById('today-date').innerHTML =
+      `${now.getFullYear()}年${now.getMonth() + 1}月${now.getDate()}日 · 週${weekdays[now.getDay()]}　${moodBadge}`;
   }
 
   function renderPrompt() {
