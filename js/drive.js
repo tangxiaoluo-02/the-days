@@ -89,7 +89,26 @@ const Drive = (() => {
     return created.id;
   }
 
+  // ── 本機快取 Drive 資料夾/檔案 ID，省掉重複查找的來回等待 ──
+  const ID_CACHE_KEY = 'td_drive_ids';
+
+  function loadIdCache() {
+    try { return JSON.parse(localStorage.getItem(ID_CACHE_KEY) || '{}'); } catch (e) { return {}; }
+  }
+  function saveIdCache(patch) {
+    try { localStorage.setItem(ID_CACHE_KEY, JSON.stringify({ ...loadIdCache(), ...patch })); } catch (e) {}
+  }
+
   async function init() {
+    const cache = loadIdCache();
+    if (cache.rootFolderId && cache.entriesFolderId && cache.photosFolderId && cache.trashFolderId) {
+      // 沿用上次記住的資料夾 ID，完全不用打 API 查找，直接可以用
+      rootFolderId    = cache.rootFolderId;
+      entriesFolderId = cache.entriesFolderId;
+      photosFolderId  = cache.photosFolderId;
+      trashFolderId   = cache.trashFolderId;
+      return;
+    }
     rootFolderId = await findOrCreateFolder(CONFIG.DRIVE_FOLDER_NAME);
     // entries/photos/trash 互不相依，平行查找可以省下不少等待時間
     [entriesFolderId, photosFolderId, trashFolderId] = await Promise.all([
@@ -97,6 +116,7 @@ const Drive = (() => {
       findOrCreateFolder('photos',  rootFolderId),
       findOrCreateFolder('trash',   rootFolderId),
     ]);
+    saveIdCache({ rootFolderId, entriesFolderId, photosFolderId, trashFolderId });
   }
 
   // ── 取得或建立月份子資料夾 ──
@@ -197,33 +217,51 @@ const Drive = (() => {
   let indexFileId = null;
 
   async function loadIndex() {
+    const cache = loadIdCache();
+    if (cache.indexFileId) {
+      try {
+        const data = await readJson(cache.indexFileId);
+        indexFileId = cache.indexFileId;
+        return data;
+      } catch (e) { /* 快取的檔案 ID 失效了（例如手動在 Drive 裡搬動過），往下重新查找 */ }
+    }
     const file = await findFile('index.json', rootFolderId);
     if (!file) {
       return { entries: [], last_updated: new Date().toISOString() };
     }
     indexFileId = file.id;
+    saveIdCache({ indexFileId: file.id });
     return readJson(file.id);
   }
 
   async function saveIndex(data) {
     data.last_updated = new Date().toISOString();
     const result = await writeJson('index.json', data, rootFolderId, indexFileId);
-    if (!indexFileId) indexFileId = result.id;
+    if (!indexFileId) { indexFileId = result.id; saveIdCache({ indexFileId: result.id }); }
   }
 
   // ── tags.json 操作 ──
   let tagsFileId = null;
 
   async function loadTags() {
+    const cache = loadIdCache();
+    if (cache.tagsFileId) {
+      try {
+        const data = await readJson(cache.tagsFileId);
+        tagsFileId = cache.tagsFileId;
+        return data;
+      } catch (e) { /* 快取失效，往下重新查找 */ }
+    }
     const file = await findFile('tags.json', rootFolderId);
     if (!file) return { tags: [] };
     tagsFileId = file.id;
+    saveIdCache({ tagsFileId: file.id });
     return readJson(file.id);
   }
 
   async function saveTags(data) {
     const result = await writeJson('tags.json', data, rootFolderId, tagsFileId);
-    if (!tagsFileId) tagsFileId = result.id;
+    if (!tagsFileId) { tagsFileId = result.id; saveIdCache({ tagsFileId: result.id }); }
   }
 
   // ── 日記 entry 操作 ──
