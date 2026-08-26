@@ -314,6 +314,15 @@ const App = (() => {
     if (currentView === 'calendar') Calendar.render(entries);
     if (currentView === 'gallery')  Gallery.render(entries);
     Stats.renderMini(entries);
+
+    // 疊在畫面最上層的全版頁面（搜尋／時光隧道）如果目前開著，也要一起刷新，
+    // 不然從裡面刪除日記後，畫面要等重新整理過才會消失
+    if (!document.getElementById('search-page').classList.contains('hidden')) {
+      doSearch();
+    }
+    if (!document.getElementById('time-tunnel-page').classList.contains('hidden')) {
+      TimeTunnel.refresh(entries);
+    }
   }
 
   // ════════════════════════

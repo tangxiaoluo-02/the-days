@@ -1,7 +1,22 @@
 // ── 時光隧道：回顧「過去任何一年、同月同日」的所有日記，依年份分組 ──
 const TimeTunnel = (() => {
+  let lastMonth = null;
+  let lastDay = null;
 
   function open(entries, month, day) {
+    lastMonth = month;
+    lastDay = day;
+    renderForDate(entries, month, day);
+    document.getElementById('time-tunnel-page').classList.remove('hidden');
+  }
+
+  // 日記在頁面開著的時候被刪除／回復時呼叫，用同一個日期重新篩選渲染
+  function refresh(entries) {
+    if (lastMonth === null) return;
+    renderForDate(entries, lastMonth, lastDay);
+  }
+
+  function renderForDate(entries, month, day) {
     const matches = entries.filter(e => {
       const d = new Date(e.created_at);
       return d.getMonth() === month && d.getDate() === day;
@@ -12,7 +27,6 @@ const TimeTunnel = (() => {
       `共 ${matches.length} 篇日記，橫跨 ${new Set(matches.map(e => new Date(e.created_at).getFullYear())).size} 個年份`;
 
     render(matches);
-    document.getElementById('time-tunnel-page').classList.remove('hidden');
   }
 
   function render(matches) {
@@ -92,5 +106,5 @@ const TimeTunnel = (() => {
     return `${period} ${h12}:${m}`;
   }
 
-  return { open };
+  return { open, refresh };
 })();
