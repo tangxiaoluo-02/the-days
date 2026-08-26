@@ -395,19 +395,30 @@ const Editor = (() => {
         }
       } catch (e) { /* 無 EXIF */ }
 
+      // 照片沒有藏拍攝時間（常見於裁切過的截圖——裁切會把這段隱藏資料清掉），
+      // 改用檔案本身的「最後修改時間」當備用，至少每張照片都有個時間可以參考
+      let exifIsFallback = false;
+      if (!exifTime && file.lastModified) {
+        exifTime = new Date(file.lastModified).toISOString();
+        exifIsFallback = true;
+      }
+
       file._exifTime = exifTime;
 
       // 壓縮照片再使用
       const previewUrl = URL.createObjectURL(file);
-      const entry = { file, previewUrl, exifTime, compress: true }; // 預設壓縮
+      const entry = { file, previewUrl, exifTime, exifIsFallback, compress: true }; // 預設壓縮
       pendingPhotos.push(entry);
       addNewPhotoThumb(entry);
     }
 
-    // 如果有 EXIF 時間，詢問是否使用第一張
+    // 如果有時間可用，詢問是否使用第一張
     const firstExif = pendingPhotos.find(p => p.exifTime);
     if (firstExif && !editingId) {
-      const use = confirm(`偵測到照片拍攝時間：${formatDatetime(firstExif.exifTime)}\n是否以此作為日記創建時間？`);
+      const msg = firstExif.exifIsFallback
+        ? `這張照片沒有拍攝時間資料，改用檔案最後修改時間：${formatDatetime(firstExif.exifTime)}\n是否以此作為日記創建時間？（可能跟實際拍攝/截圖時間有些微落差）`
+        : `偵測到照片拍攝時間：${formatDatetime(firstExif.exifTime)}\n是否以此作為日記創建時間？`;
+      const use = confirm(msg);
       if (use) {
         dateInput().value = toLocalDatetimeString(new Date(firstExif.exifTime));
       }
@@ -415,7 +426,7 @@ const Editor = (() => {
   }
 
   function addNewPhotoThumb(entry) {
-    const { file, previewUrl, exifTime } = entry;
+    const { file, previewUrl, exifTime, exifIsFallback } = entry;
     const wrap = document.createElement('div');
     wrap.className = 'photo-preview-wrap';
     wrap.dataset.key = previewUrl;
@@ -423,7 +434,11 @@ const Editor = (() => {
     const img = document.createElement('img');
     img.className = 'photo-preview';
     img.src = previewUrl;
-    if (exifTime) img.title = `拍攝時間：${formatDatetime(exifTime)}`;
+    if (exifTime) {
+      img.title = exifIsFallback
+        ? `檔案最後修改時間：${formatDatetime(exifTime)}（無拍攝時間資料，僅供參考）`
+        : `拍攝時間：${formatDatetime(exifTime)}`;
+    }
 
     const rm = document.createElement('div');
     rm.className = 'photo-remove';
