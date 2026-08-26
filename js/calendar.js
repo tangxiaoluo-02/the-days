@@ -125,6 +125,10 @@ const Calendar = (() => {
 
     document.getElementById('day-copy-btn').classList.toggle('hidden', entries.length === 0);
 
+    // 先在背景把完整內文預先抓好、存進 EntryManager 的快取，等殿下真的按下
+    // 「複製本日文字」時幾乎不用再等 Drive，才不會因為等太久被瀏覽器拒絕複製權限
+    for (const e of entries) EntryManager.getEntry(e.id).catch(() => {});
+
     renderDayMoodPicker(dateStr);
 
     list.innerHTML = '';
@@ -257,11 +261,17 @@ const Calendar = (() => {
   }
 
   async function copyTextToClipboard(text) {
-    if (navigator.clipboard && window.isSecureContext) {
-      await navigator.clipboard.writeText(text);
-      return;
+    try {
+      if (navigator.clipboard && window.isSecureContext) {
+        await navigator.clipboard.writeText(text);
+        return;
+      }
+    } catch (e) {
+      // Clipboard API 要求「使用者點擊後很短時間內」執行，前面抓完整內文要連線 Drive、
+      // 常常等太久導致瀏覽器判定逾時拒絕（NotAllowedError）。這裡自動退回舊式方法重試一次，
+      // 不讓殿下需要手動點兩次。
+      console.warn('[複製本日文字] Clipboard API 失敗，改用備用方案:', e);
     }
-    // 備用方案：不支援 Clipboard API 的環境（例如非 HTTPS）
     const ta = document.createElement('textarea');
     ta.value = text;
     ta.style.position = 'fixed';
