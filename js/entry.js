@@ -452,18 +452,25 @@ const EntryManager = (() => {
         if (!summary.drive_file_id) continue;
 
         try {
-          const entry = fullCache.get(summary.id) || await Drive.loadEntry(summary.drive_file_id);
-          if (!entry.content || !entry.content.includes('dayone-moment://')) continue;
+          // 一律直接從 Drive 重新讀最新內容，不信任本機快取——避免其他裝置反向覆蓋過索引
+          // 之後，這裡誤判「正文已經是乾淨的」就整篇跳過，漏了重算索引摘要
+          const entry = await Drive.loadEntry(summary.drive_file_id);
+          const contentDirty = !!entry.content && entry.content.includes('dayone-moment://');
+          const previewDirty = !!summary.preview && summary.preview.includes('dayone-moment://');
+          if (!contentDirty && !previewDirty) continue;
 
-          const cleaned = entry.content.replace(/!?\[[^\]]*\]\(dayone-moment:\/\/[^)]*\)/g, '').trim();
+          const cleanedContent = contentDirty
+            ? entry.content.replace(/!?\[[^\]]*\]\(dayone-moment:\/\/[^)]*\)/g, '').trim()
+            : entry.content;
           const updated = {
             ...entry,
-            content: cleaned,
-            word_count: wordCount(cleaned),
-            has_links: hasLinks(cleaned),
+            content: cleanedContent,
+            word_count: wordCount(cleanedContent),
+            has_links: hasLinks(cleanedContent),
           };
 
-          await Drive.saveEntry(updated);
+          // 正文本身沒變就不用重寫那篇日記檔案，只需要重算摘要
+          if (contentDirty) await Drive.saveEntry(updated);
           fullCache.set(summary.id, updated);
           const idx = index.entries.findIndex(e => e.id === summary.id);
           if (idx >= 0) index.entries[idx] = makeSummary(updated, summary.drive_file_id);
