@@ -54,38 +54,31 @@ const Today = (() => {
 
     const now = new Date();
     const thisYear = now.getFullYear();
-    const matches = entries
-      .filter(e => {
-        const d = new Date(e.created_at);
-        return d.getMonth() === now.getMonth() && d.getDate() === now.getDate() && d.getFullYear() !== thisYear;
-      })
-      .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+    const matches = entries.filter(e => {
+      const d = new Date(e.created_at);
+      return d.getMonth() === now.getMonth() && d.getDate() === now.getDate() && d.getFullYear() !== thisYear;
+    });
 
     if (!matches.length) return;
+
+    const years = new Set(matches.map(e => new Date(e.created_at).getFullYear())).size;
 
     const title = document.createElement('div');
     title.className = 'section-title';
     title.textContent = '📌 當年今日';
     section.appendChild(title);
 
-    for (const e of matches.slice(0, 2)) {
-      const yearsAgo = thisYear - new Date(e.created_at).getFullYear();
-      const card = document.createElement('div');
-      card.className = 'otd-card';
-
-      const badge = document.createElement('span');
-      badge.className = 'badge';
-      badge.textContent = `${yearsAgo} 年前`;
-
-      const text = document.createElement('div');
-      text.className = 't';
-      text.textContent = (e.preview || '（無文字內容）').slice(0, 60);
-
-      card.appendChild(badge);
-      card.appendChild(text);
-      card.addEventListener('click', () => App.viewEntry(e.id));
-      section.appendChild(card);
-    }
+    const btn = document.createElement('button');
+    btn.className = 'otd-tunnel-btn';
+    btn.innerHTML = `
+      <span class="otd-tunnel-ic">🌀</span>
+      <span class="otd-tunnel-text">
+        <span class="otd-tunnel-title">進入時光隧道</span>
+        <span class="otd-tunnel-sub">共 ${matches.length} 篇日記，橫跨 ${years} 個年份</span>
+      </span>
+      <span class="otd-tunnel-arrow">›</span>`;
+    btn.addEventListener('click', () => TimeTunnel.open(entries, now.getMonth(), now.getDate()));
+    section.appendChild(btn);
   }
 
   function renderRecent(entries) {

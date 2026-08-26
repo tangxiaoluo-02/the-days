@@ -226,6 +226,7 @@ const App = (() => {
     // ── 搜尋頁面 ──
     document.getElementById('search-btn').addEventListener('click', openSearchPage);
     document.getElementById('search-back-btn').addEventListener('click', closeSearchPage);
+    document.getElementById('tt-back-btn').addEventListener('click', closeTimeTunnel);
     document.getElementById('do-search-btn').addEventListener('click', doSearch);
     document.getElementById('search-input').addEventListener('keydown', (e) => {
       if (e.key === 'Enter') doSearch();
@@ -436,6 +437,13 @@ const App = (() => {
   function closeSearchPage() {
     document.getElementById('search-page').classList.add('hidden');
     document.getElementById('search-input').value = '';
+  }
+
+  // ════════════════════════
+  //  時光隧道頁面
+  // ════════════════════════
+  function closeTimeTunnel() {
+    document.getElementById('time-tunnel-page').classList.add('hidden');
   }
 
   // 從統計頁面點標籤直接跳到搜尋結果
