@@ -42,7 +42,7 @@ const EntryManager = (() => {
       .replace(/\*\*(.+?)\*\*/g, '$1')    // 移除粗體
       .replace(/\*(.+?)\*/g, '$1')        // 移除斜體
       .replace(/`(.+?)`/g, '$1')          // 移除行內程式碼
-      .replace(/\[(.+?)\]\(.+?\)/g, '$1') // 移除連結，保留文字
+      .replace(/!?\[(.*?)\]\([^)]*\)/g, '$1') // 移除連結/圖片語法，保留文字（.*? 才吃得到空白alt文字 ![]()）
       .replace(/^>\s+/gm, '')             // 移除引用符號
       .replace(/<[^>]+>/g, '')            // 移除 HTML 標籤
       .replace(/\r\n/g, '\n')             // 統一換行符
@@ -437,5 +437,39 @@ const EntryManager = (() => {
     await Drive.saveIndex(index);
   }
 
-  return { load, create, update, remove, getEntry, getIndex, addEntry, addImportedPhotos, addImportedVideos, saveCurrentIndex, getDayMood, getAllDayMoods, setDayMood };
+  // ── 一次性清理：舊資料裡殘留的 Day One 內嵌標記（![](dayone-moment://...)）──
+  // 只清文字，不動照片/影片本身（那些本來就正常顯示在日記下方）
+  async function cleanupDayOneMarkers(onProgress) {
+    await ensureLoaded();
+    const total = index.entries.length;
+    let scanned = 0, fixed = 0;
+
+    for (const summary of index.entries) {
+      scanned++;
+      if (onProgress) onProgress(scanned, total, fixed);
+      if (!summary.drive_file_id) continue;
+
+      const entry = fullCache.get(summary.id) || await Drive.loadEntry(summary.drive_file_id);
+      if (!entry.content || !entry.content.includes('dayone-moment://')) continue;
+
+      const cleaned = entry.content.replace(/!?\[[^\]]*\]\(dayone-moment:\/\/[^)]*\)/g, '').trim();
+      const updated = {
+        ...entry,
+        content: cleaned,
+        word_count: wordCount(cleaned),
+        has_links: hasLinks(cleaned),
+      };
+
+      await Drive.saveEntry(updated);
+      fullCache.set(summary.id, updated);
+      const idx = index.entries.findIndex(e => e.id === summary.id);
+      if (idx >= 0) index.entries[idx] = makeSummary(updated, summary.drive_file_id);
+      fixed++;
+    }
+
+    if (fixed > 0) await Drive.saveIndex(index);
+    return { scanned, fixed };
+  }
+
+  return { load, create, update, remove, getEntry, getIndex, addEntry, addImportedPhotos, addImportedVideos, saveCurrentIndex, cleanupDayOneMarkers, getDayMood, getAllDayMoods, setDayMood };
 })();

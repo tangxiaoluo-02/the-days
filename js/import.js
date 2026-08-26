@@ -352,7 +352,7 @@ const DayOneImport = (() => {
       }
     }
 
-    const content = dayOneEntry.text || '';
+    const content = (dayOneEntry.text || '').replace(/!?\[[^\]]*\]\(dayone-moment:\/\/[^)]*\)/g, '').trim();
     const entry = {
       id,
       created_at:  createdAt,
@@ -586,6 +586,22 @@ const DayOneImport = (() => {
     document.getElementById('import-btn').addEventListener('click', () => {
       document.getElementById('settings-menu').classList.add('hidden');
       openImportModal();
+    });
+
+    // 一次性清理：舊資料裡殘留的 Day One 內嵌標記（設定選單）
+    document.getElementById('cleanup-dayone-btn').addEventListener('click', async () => {
+      document.getElementById('settings-menu').classList.add('hidden');
+      if (!confirm('確定要清理所有日記裡殘留的 Day One 內嵌標記嗎？\n\n這會掃描全部日記，把類似 ![](dayone-moment://...) 的雜訊文字從內文移除（不影響照片/影片本身，它們本來就正常顯示），並存回雲端。')) return;
+
+      App.toast('掃描中，請稍候…', '');
+      try {
+        const { scanned, fixed } = await EntryManager.cleanupDayOneMarkers();
+        App.toast(fixed > 0 ? `清理完成：共掃描 ${scanned} 篇，修正 ${fixed} 篇 ✓` : `掃描完成：共 ${scanned} 篇，沒有需要清理的標記 ✓`, 'success');
+        App.refreshCurrentView();
+      } catch (e) {
+        console.error('[清理 Day One 標記] 失敗:', e);
+        App.toast('清理失敗：' + e.message, 'error');
+      }
     });
 
     // 選擇檔案後觸發解析
