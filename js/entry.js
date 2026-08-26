@@ -437,5 +437,50 @@ const EntryManager = (() => {
     await Drive.saveIndex(index);
   }
 
-  return { load, create, update, remove, getEntry, getIndex, addEntry, addImportedPhotos, addImportedVideos, saveCurrentIndex, getDayMood, getAllDayMoods, setDayMood };
+  // ── 一次性清理：舊資料裡殘留的 Day One 內嵌標記（![](dayone-moment://...)）──
+  // 只清文字，不動照片/影片本身。單篇失敗不中斷整批，最後一定會嘗試存回索引（即使中途有錯）。
+  async function cleanupDayOneMarkers(onProgress) {
+    await ensureLoaded();
+    const total = index.entries.length;
+    let scanned = 0, fixed = 0;
+    const failed = [];
+
+    try {
+      for (const summary of index.entries) {
+        scanned++;
+        if (onProgress) onProgress(scanned, total, fixed);
+        if (!summary.drive_file_id) continue;
+
+        try {
+          const entry = fullCache.get(summary.id) || await Drive.loadEntry(summary.drive_file_id);
+          if (!entry.content || !entry.content.includes('dayone-moment://')) continue;
+
+          const cleaned = entry.content.replace(/!?\[[^\]]*\]\(dayone-moment:\/\/[^)]*\)/g, '').trim();
+          const updated = {
+            ...entry,
+            content: cleaned,
+            word_count: wordCount(cleaned),
+            has_links: hasLinks(cleaned),
+          };
+
+          await Drive.saveEntry(updated);
+          fullCache.set(summary.id, updated);
+          const idx = index.entries.findIndex(e => e.id === summary.id);
+          if (idx >= 0) index.entries[idx] = makeSummary(updated, summary.drive_file_id);
+          fixed++;
+        } catch (e) {
+          console.error('[清理 Day One 標記] 單篇失敗，略過繼續:', summary.id, e);
+          failed.push(summary.id);
+        }
+      }
+    } finally {
+      // 不管中途有沒有單篇失敗，只要有任何一篇修好了，一定要存回索引，
+      // 避免「處理到一半」的成果因為後面某篇出錯而整批遺失
+      if (fixed > 0) await Drive.saveIndex(index);
+    }
+
+    return { scanned, fixed, failed };
+  }
+
+  return { load, create, update, remove, getEntry, getIndex, addEntry, addImportedPhotos, addImportedVideos, saveCurrentIndex, cleanupDayOneMarkers, getDayMood, getAllDayMoods, setDayMood };
 })();
