@@ -4,6 +4,7 @@ const DayOneImport = (() => {
   let _parsedEntries = [];  // 解析後備匯入的 entries
   let _zipFile = null;      // JSZip 物件
   let _photoIndex = null;   // Map: 正規化key → zip路徑（parseZip 時一次建好）
+  let _videoIndex = null;   // Map: 正規化key → zip路徑（影片，跟 _photoIndex 同一套邏輯）
 
   // ── 天氣代碼 → emoji ──
   const WEATHER_EMOJI_MAP = {
@@ -39,12 +40,24 @@ const DayOneImport = (() => {
   // ══════════════════════════════════
   //  步驟 1 → 2：解析 ZIP
   // ══════════════════════════════════
+  // 瀏覽器端的 zip 解析超過這個大小容易發生 32-bit 數字溢位，誤判成「損毀」
+  const MAX_SAFE_ZIP_SIZE = 1.8 * 1024 * 1024 * 1024; // 1.8GB
+
   async function handleFileSelect(file) {
     // 顯示「分析中」
     document.getElementById('import-analyzing').classList.remove('hidden');
     document.querySelector('.import-file-btn').style.opacity = '0.5';
 
     try {
+      if (file.size > MAX_SAFE_ZIP_SIZE) {
+        const err = new Error(
+          `檔案太大了（${(file.size / 1024 / 1024 / 1024).toFixed(1)}GB）。瀏覽器處理這麼大的 zip 檔案容易出錯，` +
+          `建議改成分批匯出（例如一次匯出幾個月的日記），把每批的檔案控制在 2GB 以內會比較穩定。`
+        );
+        err.isSizeError = true;
+        throw err;
+      }
+
       const zip = await JSZip.loadAsync(file);
       _zipFile = zip;
 
@@ -82,8 +95,22 @@ const DayOneImport = (() => {
       }
       const zipImageCount = new Set(_photoIndex.values()).size; // 實際圖片檔數量
 
-      // 計算 JSON 記錄的照片數
+      // ── 掃描 ZIP 中的實際影片檔，建立索引（跟照片同一套邏輯）──
+      _videoIndex = new Map();
+      const videoExts = /\.(mp4|mov|m4v|avi)$/i;
+      for (const [zipPath, zipEntry] of Object.entries(zip.files)) {
+        if (zipEntry.dir || zipPath.includes('__MACOSX')) continue;
+        if (!videoExts.test(zipPath)) continue;
+        const basename = zipPath.split('/').pop();
+        const nameNoExt = basename.replace(/\.[^.]+$/, '').toLowerCase();
+        _videoIndex.set(nameNoExt, zipPath);
+        _videoIndex.set(basename.toLowerCase(), zipPath);
+      }
+      const zipVideoCount = new Set(_videoIndex.values()).size;
+
+      // 計算 JSON 記錄的照片/影片數
       const totalPhotos = allEntries.reduce((sum, e) => sum + (e.photos?.length || 0), 0);
+      const totalVideos = allEntries.reduce((sum, e) => sum + (e.videos?.length || 0), 0);
 
       // 日期範圍
       const dates = allEntries.map(e => e.creationDate).filter(Boolean).sort();
@@ -102,6 +129,18 @@ const DayOneImport = (() => {
         photoHint = `<div class="import-photo-hint ok">✅ ZIP 中找到 ${zipImageCount} 個圖片檔，與記錄相符</div>`;
       }
 
+      // ── 影片狀態提示（跟照片同一套邏輯）──
+      let videoHint = '';
+      if (totalVideos === 0) {
+        videoHint = '';
+      } else if (zipVideoCount === 0) {
+        videoHint = `<div class="import-photo-hint warn">⚠️ ZIP 中找不到影片檔案（共 ${totalVideos} 筆影片記錄），請重新匯出並勾選「包含影片」</div>`;
+      } else if (zipVideoCount < totalVideos) {
+        videoHint = `<div class="import-photo-hint warn">⚠️ ZIP 中找到 ${zipVideoCount} 個影片檔，JSON 記錄 ${totalVideos} 筆，可能有部分缺少</div>`;
+      } else {
+        videoHint = `<div class="import-photo-hint ok">✅ ZIP 中找到 ${zipVideoCount} 個影片檔，與記錄相符</div>`;
+      }
+
       // 渲染摘要
       document.getElementById('import-summary').innerHTML = `
         <div class="import-summary-stats">
@@ -117,14 +156,28 @@ const DayOneImport = (() => {
             <div class="import-stat-num">${zipImageCount}</div>
             <div class="import-stat-label">ZIP 圖片檔</div>
           </div>
+          ${totalVideos > 0 ? `
+          <div class="import-stat">
+            <div class="import-stat-num">${totalVideos}</div>
+            <div class="import-stat-label">支影片記錄</div>
+          </div>
+          <div class="import-stat">
+            <div class="import-stat-num">${zipVideoCount}</div>
+            <div class="import-stat-label">ZIP 影片檔</div>
+          </div>` : ''}
         </div>
         <div class="import-date-range">📅 ${dateFrom} ～ ${dateTo}</div>
         ${photoHint}
+        ${videoHint}
       `;
 
       goStep(2);
     } catch (e) {
-      App.toast('解析失敗：' + e.message, 'error');
+      if (e.isSizeError) {
+        alert(e.message); // 這類訊息需要殿下讀完並回去操作，用彈窗確保不會被3秒toast錯過
+      } else {
+        App.toast('解析失敗：' + e.message, 'error');
+      }
     } finally {
       document.getElementById('import-analyzing').classList.add('hidden');
       document.querySelector('.import-file-btn').style.opacity = '';
@@ -188,12 +241,12 @@ const DayOneImport = (() => {
     // 顯示完成
     const lines = [];
     if (newCount > 0)      lines.push(`新增 ${newCount} 篇日記`);
-    if (photoOnly > 0)     lines.push(`補充 ${photoOnly} 篇的照片`);
+    if (photoOnly > 0)     lines.push(`補充 ${photoOnly} 篇的照片／影片`);
     if (errors > 0)        lines.push(`${errors} 篇發生錯誤`);
 
     let doneText = lines.length ? lines.join('、') + ' 🎉' : '沒有需要更新的內容';
     if (photoMissing > 0) {
-      doneText += `\n\n⚠️ 有 ${photoMissing} 篇日記在 ZIP 中找不到對應照片檔案。\n請重新從 Day One 匯出，並確認有勾選「包含照片」。`;
+      doneText += `\n\n⚠️ 有 ${photoMissing} 篇日記在 ZIP 中找不到對應的照片或影片檔案。\n請重新從 Day One 匯出，並確認有勾選「包含照片」與「包含影片」。`;
     }
     document.getElementById('import-done-text').textContent = doneText;
     document.getElementById('import-done-text').style.whiteSpace = 'pre-wrap';
@@ -218,20 +271,39 @@ const DayOneImport = (() => {
     const existingSummary = EntryManager.getIndex().find(e => e.id === id);
 
     if (existingSummary) {
-      // 已存在且已有照片 → 完全略過
-      if (existingSummary.has_photos) return 'skip';
+      // 已存在 → 照片、影片分開檢查，各自嘗試補充缺的那一種
+      // （不能像以前一樣只要 has_photos 就整篇跳過，因為現在還可能缺影片）
+      let addedCount = 0, missingSomething = false;
 
-      // 已存在但缺照片 → 嘗試補充
-      const dayOnePhotos = dayOneEntry.photos || [];
-      if (!dayOnePhotos.length) return 'skip';  // Day One 本來就沒照片
-
-      const photos = await uploadPhotos(dayOnePhotos, createdAt);
-      if (photos.length > 0) {
-        await EntryManager.addImportedPhotos(id, photos);
-        return 'photo-only';
+      if (!existingSummary.has_photos) {
+        const dayOnePhotos = dayOneEntry.photos || [];
+        if (dayOnePhotos.length) {
+          const photos = await uploadPhotos(dayOnePhotos, createdAt);
+          if (photos.length > 0) {
+            await EntryManager.addImportedPhotos(id, photos);
+            addedCount += photos.length;
+          } else {
+            missingSomething = true; // 有記錄但 ZIP 裡找不到
+          }
+        }
       }
-      // 有照片記錄但 ZIP 裡找不到
-      return 'no-photos';
+
+      if (!existingSummary.has_videos) {
+        const dayOneVideos = dayOneEntry.videos || [];
+        if (dayOneVideos.length) {
+          const videos = await uploadVideos(dayOneVideos, createdAt);
+          if (videos.length > 0) {
+            await EntryManager.addImportedVideos(id, videos);
+            addedCount += videos.length;
+          } else {
+            missingSomething = true;
+          }
+        }
+      }
+
+      if (addedCount > 0) return 'photo-only';
+      if (missingSomething) return 'no-photos';
+      return 'skip';
     }
 
     // ── 全新 entry ──
@@ -248,6 +320,9 @@ const DayOneImport = (() => {
 
     // 照片
     const photos = await uploadPhotos(dayOneEntry.photos || [], createdAt);
+
+    // 影片（不壓縮，原檔上傳）
+    const videos = await uploadVideos(dayOneEntry.videos || [], createdAt);
 
     // 天氣
     let weather = null;
@@ -284,9 +359,11 @@ const DayOneImport = (() => {
       updated_at:  updatedAt,
       content,
       photos,
+      videos,
       tags:        tagIds,
       has_links:   /https?:\/\/[^\s)>"]+/.test(content),
       has_photos:  photos.length > 0,
+      has_videos:  videos.length > 0,
       weather,
       location,
       word_count:  content.replace(/\s+/g, '').length,
@@ -369,6 +446,68 @@ const DayOneImport = (() => {
              webp: 'image/webp', jpg: 'image/jpeg', jpeg: 'image/jpeg' }[ext] || 'image/jpeg';
   }
 
+  // ── 上傳一篇 entry 的所有影片，回傳 video 物件陣列（不壓縮，原檔上傳）──
+  async function uploadVideos(dayOneVideos, createdAt) {
+    const videos = [];
+    if (!Array.isArray(dayOneVideos) || !_zipFile) return videos;
+    for (const v of dayOneVideos) {
+      try {
+        const file = await extractVideo(v);
+        if (file) {
+          const yearMonth = createdAt.slice(0, 7);
+          const driveId = await Drive.uploadVideo(file, yearMonth);
+          videos.push({ drive_file_id: driveId, filename: file.name });
+        }
+      } catch (err) {
+        console.warn('[Import] 影片上傳失敗（略過）:', err);
+      }
+    }
+    return videos;
+  }
+
+  // ══════════════════════════════════
+  //  從 ZIP 提取影片（跟 extractPhoto 同一套邏輯）
+  // ══════════════════════════════════
+  async function extractVideo(video) {
+    if (!_zipFile || !_videoIndex) return null;
+
+    const identifier = (video.identifier || '').trim();
+    const md5        = (video.md5 || '').trim();
+
+    const keys = [];
+    if (identifier) {
+      keys.push(identifier.toLowerCase());
+      keys.push(identifier.toLowerCase().replace(/-/g, ''));
+    }
+    if (md5) keys.push(md5.toLowerCase());
+
+    for (const key of keys) {
+      const zipPath = _videoIndex.get(key);
+      if (zipPath && _zipFile.files[zipPath]) {
+        const blob = await _zipFile.files[zipPath].async('blob');
+        const ext  = zipPath.split('.').pop().toLowerCase();
+        return new File([blob], zipPath.split('/').pop(), { type: mimeForVideoExt(ext) });
+      }
+    }
+
+    if (identifier) {
+      for (const [key, zipPath] of _videoIndex) {
+        if (key.includes(identifier.toLowerCase()) || identifier.toLowerCase().includes(key)) {
+          const blob = await _zipFile.files[zipPath].async('blob');
+          const ext  = zipPath.split('.').pop().toLowerCase();
+          return new File([blob], zipPath.split('/').pop(), { type: mimeForVideoExt(ext) });
+        }
+      }
+    }
+
+    return null;
+  }
+
+  function mimeForVideoExt(ext) {
+    return { mp4: 'video/mp4', mov: 'video/quicktime', m4v: 'video/x-m4v',
+             avi: 'video/x-msvideo' }[ext] || 'video/mp4';
+  }
+
   // ══════════════════════════════════
   //  照片壓縮（目標 ≤1MB，匯入專用）
   // ══════════════════════════════════
@@ -427,6 +566,7 @@ const DayOneImport = (() => {
     _parsedEntries = [];
     _zipFile = null;
     _photoIndex = null;
+    _videoIndex = null;
     document.getElementById('import-file-input').value = '';
     document.getElementById('import-analyzing').classList.add('hidden');
     document.querySelector('.import-file-btn').style.opacity = '';
@@ -460,6 +600,7 @@ const DayOneImport = (() => {
       _parsedEntries = [];
       _zipFile = null;
       _photoIndex = null;
+    _videoIndex = null;
       document.getElementById('import-file-input').value = '';
       goStep(1);
     });

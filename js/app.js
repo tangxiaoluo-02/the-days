@@ -139,6 +139,12 @@ const App = (() => {
       e.target.value = '';
     });
 
+    // 影片上傳
+    document.getElementById('video-input').addEventListener('change', (e) => {
+      Editor.handleVideoInput(Array.from(e.target.files));
+      e.target.value = '';
+    });
+
     // 標籤選擇器開關
     document.getElementById('add-tag-btn').addEventListener('click', (e) => {
       e.stopPropagation();
@@ -428,6 +434,19 @@ const App = (() => {
       photosEl.appendChild(img);
     }
 
+    // 影片
+    const videosEl = document.getElementById('view-videos');
+    videosEl.innerHTML = '';
+    for (const video of entry.videos || []) {
+      const el = document.createElement('video');
+      el.className = 'view-video';
+      el.controls = true;
+      el.playsInline = true;
+      el.style.background = '#000';
+      Drive.getVideoUrl(video.drive_file_id).then(url => { el.src = url; });
+      videosEl.appendChild(el);
+    }
+
     openModal('view-modal');
   }
 
@@ -536,6 +555,7 @@ const App = (() => {
               created_at: entry.created_at,
               preview: entry.content?.slice(0, 120) || '',
               has_photos: entry.has_photos,
+              has_videos: entry.has_videos || false,
               has_links: entry.has_links,
               tags: entry.tags,
               word_count: entry.word_count,

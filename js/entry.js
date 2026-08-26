@@ -70,6 +70,7 @@ const EntryManager = (() => {
     const id  = uuid();
     const now = data.datetime || toLocalISOString(new Date());
     const photoFiles = data.photoFiles || [];
+    const videoFiles = data.videoFiles || [];
 
     // 為每張照片產生臨時 ID，blob URL 存入快取讓 UI 立即顯示
     const photos = photoFiles.map((file, i) => {
@@ -78,14 +79,23 @@ const EntryManager = (() => {
       Drive.registerBlobUrl(tempId, blobUrl);
       return { drive_file_id: tempId, filename: file.name, taken_at: file._exifTime || null };
     });
+    // 影片跟照片同一套「臨時ID+blob URL立即顯示」邏輯
+    const videos = videoFiles.map((file, i) => {
+      const tempId  = `_tmpv_${id}_${i}`;
+      const blobUrl = URL.createObjectURL(file);
+      Drive.registerBlobUrl(tempId, blobUrl);
+      return { drive_file_id: tempId, filename: file.name };
+    });
 
     const entry = {
       id, created_at: now, updated_at: now,
       content:   data.content  || '',
       photos,
+      videos,
       tags:      data.tags     || [],
       has_links: hasLinks(data.content || ''),
       has_photos: photos.length > 0,
+      has_videos: videos.length > 0,
       weather:   data.weather  || null,
       location:  data.location || null,
       word_count: wordCount(data.content || ''),
@@ -98,7 +108,7 @@ const EntryManager = (() => {
     index.entries.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
 
     // ② 背景上傳（不等待）
-    _uploadInBackground(id, entry, photoFiles).catch(e => {
+    _uploadInBackground(id, entry, photoFiles, videoFiles).catch(e => {
       console.error('背景同步失敗', e);
       App.toast('雲端同步失敗，請稍後重試', 'error');
     });
@@ -106,17 +116,17 @@ const EntryManager = (() => {
     return entry;
   }
 
-  // ── 背景上傳：文字與照片各自獨立，互不影響 ──
-  async function _uploadInBackground(id, entry, photoFiles) {
+  // ── 背景上傳：文字與照片/影片各自獨立，互不影響 ──
+  async function _uploadInBackground(id, entry, photoFiles, videoFiles) {
 
     // ▶ 任務 A：快速存文字（獨立執行，失敗不影響任務 B）
     _saveTextOnly(id, entry).catch(e =>
       console.warn('[背景] 文字預存失敗（不影響照片上傳）:', e)
     );
 
-    // ▶ 任務 B：上傳照片 → 存完整 entry → 更新索引
-    if (photoFiles.length === 0) {
-      // 沒有照片，等任務 A 完成後就好
+    // ▶ 任務 B：上傳照片／影片 → 存完整 entry → 更新索引
+    if (photoFiles.length === 0 && videoFiles.length === 0) {
+      // 沒有照片影片，等任務 A 完成後就好
       try {
         await _saveTextOnly(id, entry);
         App.toast('已同步到雲端 ✓', 'success');
@@ -141,8 +151,19 @@ const EntryManager = (() => {
       });
     }
 
-    // 存完整 entry（含照片真實 ID）
-    const updated     = { ...entry, photos };
+    // 上傳每支影片（不壓縮，原檔上傳）
+    const videos = [];
+    for (let i = 0; i < videoFiles.length; i++) {
+      const file      = videoFiles[i];
+      const tempId    = `_tmpv_${id}_${i}`;
+      const yearMonth = entry.created_at.slice(0, 7);
+      const driveId   = await Drive.uploadVideo(file, yearMonth);
+      Drive.renameBlobUrl(tempId, driveId);
+      videos.push({ drive_file_id: driveId, filename: file.name });
+    }
+
+    // 存完整 entry（含照片/影片真實 ID）
+    const updated     = { ...entry, photos, videos };
     const fileDriveId = await Drive.saveEntry(updated);
     driveIdMap.set(id, fileDriveId);
     fullCache.set(id, updated);
@@ -156,9 +177,9 @@ const EntryManager = (() => {
     App.refreshCurrentView();
   }
 
-  // 只存文字（不含照片），讓重整頁面時至少文字不遺失
+  // 只存文字（不含照片/影片），讓重整頁面時至少文字不遺失
   async function _saveTextOnly(id, entry) {
-    const textEntry   = { ...entry, photos: [], has_photos: false };
+    const textEntry   = { ...entry, photos: [], videos: [], has_photos: false, has_videos: false };
     const fileDriveId = await Drive.saveEntry(textEntry);
     driveIdMap.set(id, fileDriveId);
     const idx = index.entries.findIndex(e => e.id === id);
@@ -181,6 +202,10 @@ const EntryManager = (() => {
     const keepIds = new Set(data.keepPhotoIds || entry.photos.map(p => p.drive_file_id));
     const keptOldPhotos = entry.photos.filter(p => keepIds.has(p.drive_file_id));
 
+    // 影片同一套保留邏輯（新上傳的一律保留，只有 keepVideoIds 才拿來篩選舊的）
+    const keepVideoIds = new Set(data.keepVideoIds || (entry.videos || []).map(v => v.drive_file_id));
+    const keptOldVideos = (entry.videos || []).filter(v => keepVideoIds.has(v.drive_file_id));
+
     // 新照片：先給臨時 ID + blob URL，讓 UI 立刻看得到，不等真正上傳完成
     const newPhotoFiles = data.newPhotoFiles || [];
     const tempIds = [];
@@ -192,14 +217,27 @@ const EntryManager = (() => {
       return { drive_file_id: tempId, filename: file.name, taken_at: file._exifTime || null };
     });
 
+    // 新影片，同一套臨時 ID 邏輯
+    const newVideoFiles = data.newVideoFiles || [];
+    const tempVideoIds = [];
+    const tempVideos = newVideoFiles.map((file, i) => {
+      const tempId = `_tmpv_${id}_edit_${Date.now()}_${i}`;
+      tempVideoIds.push(tempId);
+      const blobUrl = URL.createObjectURL(file);
+      Drive.registerBlobUrl(tempId, blobUrl);
+      return { drive_file_id: tempId, filename: file.name };
+    });
+
     const updated = {
       ...entry,
       updated_at:  new Date().toISOString(),
       content:     data.content ?? entry.content,
       tags:        data.tags    ?? entry.tags,
       photos:      [...keptOldPhotos, ...tempPhotos],
+      videos:      [...keptOldVideos, ...tempVideos],
       has_links:   hasLinks(data.content ?? entry.content),
       has_photos:  (keptOldPhotos.length + tempPhotos.length) > 0,
+      has_videos:  (keptOldVideos.length + tempVideos.length) > 0,
       weather:     data.weather  ?? entry.weather,
       location:    data.location ?? entry.location,
       word_count:  wordCount(data.content ?? entry.content),
@@ -214,8 +252,8 @@ const EntryManager = (() => {
     if (idx >= 0) index.entries[idx] = makeSummary(updated, driveId);
     index.entries.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
 
-    // ② 背景上傳新照片、存回 Drive（不等待）
-    _updateInBackground(id, updated, newPhotoFiles, tempIds, keptOldPhotos, entry.created_at, driveId).catch(e => {
+    // ② 背景上傳新照片/影片、存回 Drive（不等待）
+    _updateInBackground(id, updated, newPhotoFiles, tempIds, keptOldPhotos, newVideoFiles, tempVideoIds, keptOldVideos, entry.created_at, driveId).catch(e => {
       console.error('背景同步失敗', e);
       App.toast('雲端同步失敗，請稍後重試', 'error');
     });
@@ -223,7 +261,7 @@ const EntryManager = (() => {
     return updated;
   }
 
-  async function _updateInBackground(id, optimisticEntry, newPhotoFiles, tempIds, keptOldPhotos, entryCreatedAt, driveId) {
+  async function _updateInBackground(id, optimisticEntry, newPhotoFiles, tempIds, keptOldPhotos, newVideoFiles, tempVideoIds, keptOldVideos, entryCreatedAt, driveId) {
     let finalPhotos = keptOldPhotos;
 
     if (newPhotoFiles.length > 0) {
@@ -242,7 +280,25 @@ const EntryManager = (() => {
       finalPhotos = [...keptOldPhotos, ...uploaded];
     }
 
-    const finalEntry = { ...optimisticEntry, photos: finalPhotos, has_photos: finalPhotos.length > 0 };
+    let finalVideos = keptOldVideos;
+
+    if (newVideoFiles.length > 0) {
+      const uploaded = [];
+      for (let i = 0; i < newVideoFiles.length; i++) {
+        const file      = newVideoFiles[i];
+        const yearMonth = entryCreatedAt.slice(0, 7);
+        const realDriveId = await Drive.uploadVideo(file, yearMonth);
+        Drive.renameBlobUrl(tempVideoIds[i], realDriveId);
+        uploaded.push({ drive_file_id: realDriveId, filename: file.name });
+      }
+      finalVideos = [...keptOldVideos, ...uploaded];
+    }
+
+    const finalEntry = {
+      ...optimisticEntry,
+      photos: finalPhotos, videos: finalVideos,
+      has_photos: finalPhotos.length > 0, has_videos: finalVideos.length > 0,
+    };
     await Drive.saveEntry(finalEntry);
     fullCache.set(id, finalEntry);
 
@@ -292,6 +348,7 @@ const EntryManager = (() => {
       updated_at: entry.updated_at,
       preview: makePreview(entry.content),
       has_photos: entry.has_photos,
+      has_videos: entry.has_videos || false,
       has_links:  entry.has_links,
       tags:       entry.tags,
       word_count: entry.word_count,
@@ -352,11 +409,33 @@ const EntryManager = (() => {
     if (idx >= 0) index.entries[idx] = makeSummary(updated, summary.drive_file_id);
   }
 
+  // ── 匯入專用：為已存在的 entry 補充影片（不重複新增）──
+  async function addImportedVideos(id, newVideos) {
+    if (!newVideos.length) return;
+    const summary = index.entries.find(e => e.id === id);
+    if (!summary) return;
+
+    const entry = await Drive.loadEntry(summary.drive_file_id);
+    const existing = entry.videos || [];
+
+    const existingNames = new Set(existing.map(v => v.filename));
+    const toAdd = newVideos.filter(v => !existingNames.has(v.filename));
+    if (!toAdd.length) return;
+
+    const merged = [...existing, ...toAdd];
+    const updated = { ...entry, videos: merged, has_videos: true };
+
+    await Drive.saveEntry(updated);
+    fullCache.set(id, updated);
+    const idx = index.entries.findIndex(e => e.id === id);
+    if (idx >= 0) index.entries[idx] = makeSummary(updated, summary.drive_file_id);
+  }
+
   // ── 匯入專用：批次完成後儲存最終索引 ──
   async function saveCurrentIndex() {
     index.entries.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
     await Drive.saveIndex(index);
   }
 
-  return { load, create, update, remove, getEntry, getIndex, addEntry, addImportedPhotos, saveCurrentIndex, getDayMood, getAllDayMoods, setDayMood };
+  return { load, create, update, remove, getEntry, getIndex, addEntry, addImportedPhotos, addImportedVideos, saveCurrentIndex, getDayMood, getAllDayMoods, setDayMood };
 })();

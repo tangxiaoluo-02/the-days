@@ -856,6 +856,30 @@ svg.spark { width: 100%; height: 44px; display: block; }
 }
 #add-photo-btn:hover { border-color: var(--accent); color: var(--primary); }
 
+/* ── Videos（編輯器，跟照片共用大部分樣式）── */
+#video-list { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }
+.video-preview-wrap { position: relative; width: 120px; height: 80px; }
+.video-preview {
+  width: 120px; height: 80px;
+  object-fit: cover;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: #000;
+}
+#add-video-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--text-3);
+  padding: 5px 12px;
+  border: 1px dashed var(--border-2);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+#add-video-btn:hover { border-color: var(--accent); color: var(--primary); }
+
 /* ── 查看日記標籤編輯按鈕 ── */
 .view-edit-tags-btn {
   font-size: 12px;
@@ -902,6 +926,19 @@ svg.spark { width: 100%; height: 44px; display: block; }
   transition: transform 0.2s;
 }
 .view-photo:hover { transform: scale(1.04); }
+
+.view-videos {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 0 20px 20px;
+}
+.view-video {
+  width: 100%;
+  max-height: 420px;
+  border-radius: var(--radius-sm);
+  background: #000;
+}
 
 /* ══════════════════════════════════════
    全版搜尋頁面

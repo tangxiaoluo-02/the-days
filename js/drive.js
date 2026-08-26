@@ -6,6 +6,7 @@ const Drive = (() => {
   let rootFolderId    = null;
   let entriesFolderId = null;
   let photosFolderId  = null;
+  let videosFolderId  = null;
   let trashFolderId   = null;
 
   // 記憶體快取（blob URL）
@@ -101,22 +102,24 @@ const Drive = (() => {
 
   async function init() {
     const cache = loadIdCache();
-    if (cache.rootFolderId && cache.entriesFolderId && cache.photosFolderId && cache.trashFolderId) {
+    if (cache.rootFolderId && cache.entriesFolderId && cache.photosFolderId && cache.videosFolderId && cache.trashFolderId) {
       // 沿用上次記住的資料夾 ID，完全不用打 API 查找，直接可以用
       rootFolderId    = cache.rootFolderId;
       entriesFolderId = cache.entriesFolderId;
       photosFolderId  = cache.photosFolderId;
+      videosFolderId  = cache.videosFolderId;
       trashFolderId   = cache.trashFolderId;
       return;
     }
     rootFolderId = await findOrCreateFolder(CONFIG.DRIVE_FOLDER_NAME);
-    // entries/photos/trash 互不相依，平行查找可以省下不少等待時間
-    [entriesFolderId, photosFolderId, trashFolderId] = await Promise.all([
+    // entries/photos/videos/trash 互不相依，平行查找可以省下不少等待時間
+    [entriesFolderId, photosFolderId, videosFolderId, trashFolderId] = await Promise.all([
       findOrCreateFolder('entries', rootFolderId),
       findOrCreateFolder('photos',  rootFolderId),
+      findOrCreateFolder('videos',  rootFolderId),
       findOrCreateFolder('trash',   rootFolderId),
     ]);
-    saveIdCache({ rootFolderId, entriesFolderId, photosFolderId, trashFolderId });
+    saveIdCache({ rootFolderId, entriesFolderId, photosFolderId, videosFolderId, trashFolderId });
   }
 
   // ── 取得或建立月份子資料夾 ──
@@ -193,6 +196,17 @@ const Drive = (() => {
     const folderId = await getMonthFolder(photosFolderId, yearMonth);
     const uploaded = await uploadFile(file.name, file, file.type, folderId);
     return uploaded.id;
+  }
+
+  // ── 影片操作（不壓縮，原檔上傳；下載/快取邏輯跟照片共用同一套機制）──
+  async function uploadVideo(file, yearMonth) {
+    const folderId = await getMonthFolder(videosFolderId, yearMonth);
+    const uploaded = await uploadFile(file.name, file, file.type, folderId);
+    return uploaded.id;
+  }
+
+  async function getVideoUrl(fileId) {
+    return getPhotoUrl(fileId); // 下載+快取邏輯跟檔案類型無關，直接沿用
   }
 
   async function getPhotoUrl(fileId) {
@@ -328,6 +342,7 @@ const Drive = (() => {
     init,
     readJson, writeJson,
     uploadPhoto, getPhotoUrl,
+    uploadVideo, getVideoUrl,
     registerBlobUrl, renameBlobUrl,
     loadIndex, saveIndex,
     loadTags, saveTags,

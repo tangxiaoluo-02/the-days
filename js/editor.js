@@ -3,11 +3,14 @@ const Editor = (() => {
   let editingId    = null;   // null = 新增，有值 = 編輯
   let pendingPhotos = [];    // { file, previewUrl, exifTime, compress }
   let keepPhotoIds  = [];    // 編輯時保留的舊照片 drive_file_id
+  let pendingVideos = [];    // { file, previewUrl }（影片不壓縮，原檔上傳）
+  let keepVideoIds  = [];    // 編輯時保留的舊影片 drive_file_id
   let selectedTags  = [];    // 已選擇的 tag id
 
   const textarea   = () => document.getElementById('entry-content');
   const preview    = () => document.getElementById('entry-preview');
   const photoList  = () => document.getElementById('photo-list');
+  const videoList  = () => document.getElementById('video-list');
   const dateInput  = () => document.getElementById('entry-datetime');
 
   // ── 草稿自動暫存（存在本機瀏覽器，寫沒存也不怕遺失）──
@@ -56,6 +59,8 @@ const Editor = (() => {
     editingId    = entry?.id || null;
     pendingPhotos = [];
     keepPhotoIds  = [];
+    pendingVideos = [];
+    keepVideoIds  = [];
     selectedTags  = entry ? [...(entry.tags || [])] : [];
 
     document.getElementById('editor-title').textContent = entry ? '編輯日記' : '新增日記';
@@ -71,14 +76,23 @@ const Editor = (() => {
     textarea().classList.remove('hidden');
     document.getElementById('preview-toggle-btn').title = '切換預覽';
 
-    // 清空照片
+    // 清空照片／影片
     photoList().innerHTML = '';
+    videoList().innerHTML = '';
 
     // 載入舊照片（編輯模式）
     if (entry && entry.photos?.length) {
       for (const photo of entry.photos) {
         keepPhotoIds.push(photo.drive_file_id);
         addOldPhotoThumb(photo);
+      }
+    }
+
+    // 載入舊影片（編輯模式）
+    if (entry && entry.videos?.length) {
+      for (const video of entry.videos) {
+        keepVideoIds.push(video.drive_file_id);
+        addOldVideoThumb(video);
       }
     }
 
@@ -464,6 +478,69 @@ const Editor = (() => {
     photoList().appendChild(wrap);
   }
 
+  // ── 影片上傳（不壓縮，殿下的影片通常很短，原檔上傳）──
+  async function handleVideoInput(files) {
+    for (const file of files) {
+      const previewUrl = URL.createObjectURL(file);
+      const entry = { file, previewUrl };
+      pendingVideos.push(entry);
+      addNewVideoThumb(entry);
+    }
+  }
+
+  function addNewVideoThumb(entry) {
+    const { file, previewUrl } = entry;
+    const wrap = document.createElement('div');
+    wrap.className = 'video-preview-wrap';
+    wrap.dataset.key = previewUrl;
+
+    const video = document.createElement('video');
+    video.className = 'video-preview';
+    video.src = previewUrl;
+    video.controls = true;
+    video.muted = true;
+    video.playsInline = true;
+
+    const rm = document.createElement('div');
+    rm.className = 'photo-remove';
+    rm.textContent = '✕';
+    rm.onclick = () => {
+      pendingVideos = pendingVideos.filter(v => v.previewUrl !== previewUrl);
+      wrap.remove();
+    };
+
+    wrap.appendChild(video);
+    wrap.appendChild(rm);
+    videoList().appendChild(wrap);
+  }
+
+  function addOldVideoThumb(video) {
+    const wrap = document.createElement('div');
+    wrap.className = 'video-preview-wrap';
+    wrap.dataset.driveId = video.drive_file_id;
+
+    const el = document.createElement('video');
+    el.className = 'video-preview';
+    el.controls = true;
+    el.muted = true;
+    el.playsInline = true;
+    el.style.background = 'var(--surface-2)';
+    // 懶載入
+    Drive.getVideoUrl(video.drive_file_id).then(url => { el.src = url; });
+
+    const rm = document.createElement('div');
+    rm.className = 'photo-remove';
+    rm.textContent = '✕';
+    rm.onclick = () => {
+      keepVideoIds = keepVideoIds.filter(id => id !== video.drive_file_id);
+      wrap.remove();
+    };
+
+    wrap.appendChild(el);
+    wrap.appendChild(rm);
+    videoList().appendChild(wrap);
+  }
+
   // ── 標籤相關 ──
   function renderSelectedTags() {
     const container = document.getElementById('selected-tags');
@@ -587,12 +664,16 @@ const Editor = (() => {
     const [dh, dmin]    = timePart.split(':').map(Number);
     const datetime = toLocalISOString(new Date(dy, dm - 1, dd, dh, dmin, 0));
     const processedPhotos = await Promise.all(pendingPhotos.map(p => p.compress ? compressImage(p.file) : p.file));
+    const videoFiles = pendingVideos.map(v => v.file); // 不壓縮，原檔上傳
     const data = {
       content, datetime,
       tags:          selectedTags,
       photoFiles:    processedPhotos, // 新增日記用
       newPhotoFiles: processedPhotos, // 編輯日記用
       keepPhotoIds,
+      videoFiles:    videoFiles,      // 新增日記用
+      newVideoFiles: videoFiles,      // 編輯日記用
+      keepVideoIds,
       weather:       Editor._pendingWeather,
       location:      Editor._pendingLocation,
     };
@@ -612,8 +693,8 @@ const Editor = (() => {
     clearDraft(); // 存成功了，草稿就不需要了
     closeModal('editor-modal');
     App.refreshCurrentView();
-    if (pendingPhotos.length > 0) {
-      App.toast((editingId ? '日記已更新，照片上傳中… ⏫' : '日記已儲存，照片上傳中… ⏫'), '');
+    if (pendingPhotos.length > 0 || pendingVideos.length > 0) {
+      App.toast((editingId ? '日記已更新，照片／影片上傳中… ⏫' : '日記已儲存，照片／影片上傳中… ⏫'), '');
     } else {
       App.toast((editingId ? '日記已更新 ✓' : '日記已儲存 ✓'), 'success');
     }
@@ -631,6 +712,7 @@ const Editor = (() => {
     applyFormat,
     applyColor,
     handlePhotoInput,
+    handleVideoInput,
     openTagPicker,
     renderMarkdown,
     makeTagChip,
