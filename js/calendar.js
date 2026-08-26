@@ -123,6 +123,8 @@ const Calendar = (() => {
     const d = new Date(dateStr + 'T00:00:00');
     title.textContent = `${d.getFullYear()}年${d.getMonth()+1}月${d.getDate()}日` + (entries.length ? `（共 ${entries.length} 則）` : '');
 
+    document.getElementById('day-copy-btn').classList.toggle('hidden', entries.length === 0);
+
     renderDayMoodPicker(dateStr);
 
     list.innerHTML = '';
@@ -220,5 +222,55 @@ const Calendar = (() => {
     drawCalendar();
   }
 
-  return { render, prevMonth, nextMonth, goToday };
+  // ── 複製選定日期的所有日記文字（含時間戳），方便貼到其他筆記軟體 ──
+  async function copyDayText() {
+    if (!selectedDate) return;
+    const entries = allEntries
+      .filter(e => e.created_at.slice(0, 10) === selectedDate)
+      .sort((a, b) => a.created_at.localeCompare(b.created_at));
+    if (!entries.length) return;
+
+    const btn   = document.getElementById('day-copy-btn');
+    const label = document.getElementById('day-copy-btn-label');
+    const originalLabel = label.textContent;
+    btn.disabled = true;
+    label.textContent = '準備中…';
+
+    try {
+      // 索引裡的 preview 只有前120字，要一篇篇抓完整內文才不會複製到被截斷的文字
+      const fullEntries = await Promise.all(entries.map(e => EntryManager.getEntry(e.id)));
+      const blocks = fullEntries.map(entry => {
+        const d  = new Date(entry.created_at);
+        const hh = String(d.getHours()).padStart(2, '0');
+        const mm = String(d.getMinutes()).padStart(2, '0');
+        return `${hh}:${mm}\n${entry.content || ''}`;
+      });
+      await copyTextToClipboard(blocks.join('\n\n'));
+      App.toast(`已複製 ${entries.length} 則日記文字 ✓`, 'success');
+    } catch (e) {
+      console.error('[複製本日文字] 失敗:', e);
+      App.toast('複製失敗：' + e.message, 'error');
+    } finally {
+      btn.disabled = false;
+      label.textContent = originalLabel;
+    }
+  }
+
+  async function copyTextToClipboard(text) {
+    if (navigator.clipboard && window.isSecureContext) {
+      await navigator.clipboard.writeText(text);
+      return;
+    }
+    // 備用方案：不支援 Clipboard API 的環境（例如非 HTTPS）
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    ta.style.position = 'fixed';
+    ta.style.opacity = '0';
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+  }
+
+  return { render, prevMonth, nextMonth, goToday, copyDayText };
 })();

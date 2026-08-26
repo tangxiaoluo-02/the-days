@@ -103,6 +103,7 @@ const App = (() => {
     document.getElementById('cal-prev').addEventListener('click', () => Calendar.prevMonth());
     document.getElementById('cal-next').addEventListener('click', () => Calendar.nextMonth());
     document.getElementById('cal-today').addEventListener('click', () => Calendar.goToday());
+    document.getElementById('day-copy-btn').addEventListener('click', () => Calendar.copyDayText());
 
     // Modal 關閉按鈕（通用）
     document.querySelectorAll('.modal-close, [data-modal]').forEach(btn => {

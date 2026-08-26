@@ -588,24 +588,6 @@ const DayOneImport = (() => {
       openImportModal();
     });
 
-    // 一次性清理：舊資料裡殘留的 Day One 內嵌標記（設定選單）
-    document.getElementById('cleanup-dayone-btn').addEventListener('click', async () => {
-      document.getElementById('settings-menu').classList.add('hidden');
-      if (!confirm('確定要清理所有日記裡殘留的 Day One 內嵌標記嗎？\n\n開始之前請確認：只有「這個」分頁/裝置開著 The Days，其他手機/電腦上的分頁都已經關閉——不然舊資料可能會被其他分頁蓋回來。\n\n這會掃描全部日記，把類似 ![](dayone-moment://...) 的雜訊文字從內文移除（不影響照片/影片本身），並存回雲端。')) return;
-
-      App.toast('掃描中，請稍候…（跑完會有彈窗通知，請留在這個分頁）', '');
-      try {
-        const { scanned, fixed, failed } = await EntryManager.cleanupDayOneMarkers();
-        let msg = `清理完成\n\n共掃描 ${scanned} 篇，修正 ${fixed} 篇。`;
-        if (failed.length > 0) msg += `\n\n有 ${failed.length} 篇處理失敗（可能是網路問題），可以再點一次按鈕重跑一次，沒處理到的會自動再試。`;
-        alert(msg);
-        App.refreshCurrentView();
-      } catch (e) {
-        console.error('[清理 Day One 標記] 失敗:', e);
-        alert('清理失敗：' + e.message + '\n\n可以再點一次按鈕重試。');
-      }
-    });
-
     // 選擇檔案後觸發解析
     document.getElementById('import-file-input').addEventListener('change', (e) => {
       const file = e.target.files[0];
