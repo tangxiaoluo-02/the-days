@@ -27,6 +27,44 @@ const EntryManager = (() => {
     await load();
   }
 
+  // ── 索引寫入：一律「重新抓最新→套用這次的變更→存回去」，絕不直接拿本機這份蓋過去 ──
+  // 背景：殿下常常同時開好幾個分頁/裝置（手機捷徑一個、瀏覽器一個、電腦一個），每個分頁
+  // 自己記憶體裡都保留一份完整的 index.entries。如果直接拿「本機這份」整包存回 Drive，
+  // 只要有任一分頁是比較久以前打開的、沒看到其他分頁後來新增/修改的日記，一存檔就會把
+  // 那些日記從索引裡蓋掉——這是殿下回報「日記整篇消失」的真正根因。
+  // 改成每次要寫索引，都先重新向 Drive 讀一次「現在真正最新」的版本，只把這個分頁這次
+  // 自己要做的變更（mutator 回呼）套進最新版本，再存回去，這樣不同分頁的變更才能疊加、
+  // 不會互相蓋掉對方。寫完也把本機 index 同步成這份最新結果，讓這個分頁接下來看到的畫面
+  // 也是正確的（順便撿到其他分頁這段時間新增的內容）。
+  // 已知殘存風險：如果兩個分頁在「幾乎同一瞬間」（重新讀取到真正寫入之間，通常是幾百毫秒）
+  // 都在存檔，還是有極小機率其中一個會蓋掉另一個——但這已經把原本「分頁開好幾小時都可能
+  // 蓋掉」的常見情況，縮小成「兩個分頁在同一秒內搶著存檔」這種極端少見的情況。
+  async function patchIndexOnDrive(mutator) {
+    const fresh = await Drive.loadIndex();
+    if (!Array.isArray(fresh.entries)) fresh.entries = [];
+    if (!fresh.day_moods || typeof fresh.day_moods !== 'object') fresh.day_moods = {};
+
+    mutator(fresh);
+    fresh.entries.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+
+    await Drive.saveIndex(fresh);
+    index = fresh; // 本機也同步成最新結果
+    return fresh;
+  }
+
+  // 把一篇日記的最新摘要套進索引（找得到就取代，找不到就新增，兩種情境通用）
+  function upsertSummaryInto(freshIndex, entry, driveId) {
+    upsertRawSummaryInto(freshIndex, makeSummary(entry, driveId));
+  }
+
+  // 跟上面同一套邏輯，差別是直接吃「已經算好的摘要物件」而不是完整 entry
+  // （匯入批次結尾用得到——本機清單裡已經有算好的摘要，不需要重算）
+  function upsertRawSummaryInto(freshIndex, summary) {
+    const idx = freshIndex.entries.findIndex(e => e.id === summary.id);
+    if (idx >= 0) freshIndex.entries[idx] = summary;
+    else freshIndex.entries.push(summary);
+  }
+
   // ── 生成 UUID ──
   function uuid() {
     return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
@@ -168,10 +206,8 @@ const EntryManager = (() => {
     driveIdMap.set(id, fileDriveId);
     fullCache.set(id, updated);
 
-    // 更新索引
-    const idx = index.entries.findIndex(e => e.id === id);
-    if (idx >= 0) index.entries[idx] = makeSummary(updated, fileDriveId);
-    await Drive.saveIndex(index);
+    // 更新索引（重新抓最新版本再套用，避免蓋掉其他分頁這段時間的變更）
+    await patchIndexOnDrive(fresh => upsertSummaryInto(fresh, updated, fileDriveId));
 
     App.toast('已同步到雲端 ✓', 'success');
     App.refreshCurrentView();
@@ -182,20 +218,27 @@ const EntryManager = (() => {
     const textEntry   = { ...entry, photos: [], videos: [], has_photos: false, has_videos: false };
     const fileDriveId = await Drive.saveEntry(textEntry);
     driveIdMap.set(id, fileDriveId);
-    const idx = index.entries.findIndex(e => e.id === id);
-    if (idx >= 0) index.entries[idx] = makeSummary(textEntry, fileDriveId);
-    await Drive.saveIndex(index);
+    await patchIndexOnDrive(fresh => upsertSummaryInto(fresh, textEntry, fileDriveId));
   }
 
   // ── 更新日記（立即回應 + 背景上傳，跟 create 同一套邏輯）──
   async function update(id, data) {
     await ensureLoaded();
-    let entry = fullCache.get(id);
-    if (!entry) {
-      const summary = index.entries.find(e => e.id === id);
-      if (!summary) throw new Error('Entry not found');
+    const summary = index.entries.find(e => e.id === id);
+    if (!summary) throw new Error('Entry not found');
+
+    // 一律重新向 Drive 抓最新版本再開始改，不信任本機快取——避免拿「這個分頁自己記得的
+    // 舊版本」當底去改，把這段期間在其他分頁/裝置新增的內容（文字、照片、影片）蓋掉。
+    // 這是解決「同時開好幾個分頁，內容莫名消失」問題的關鍵一步。
+    let entry;
+    if (summary.drive_file_id) {
       entry = await Drive.loadEntry(summary.drive_file_id);
       fullCache.set(id, entry);
+    } else {
+      // 極少數情況：日記還在背景同步中（剛新增、還沒真的存到 Drive），沒有「更新版本」
+      // 可以抓，只能先用本機這份樂觀更新的內容
+      entry = fullCache.get(id);
+      if (!entry) throw new Error('日記還在同步中，請稍後再試');
     }
 
     // 保留使用者沒刪除的舊照片（已經有真實 drive_file_id，不需要重傳）
@@ -302,9 +345,7 @@ const EntryManager = (() => {
     await Drive.saveEntry(finalEntry);
     fullCache.set(id, finalEntry);
 
-    const idx = index.entries.findIndex(e => e.id === id);
-    if (idx >= 0) index.entries[idx] = makeSummary(finalEntry, driveId);
-    await Drive.saveIndex(index);
+    await patchIndexOnDrive(fresh => upsertSummaryInto(fresh, finalEntry, driveId));
 
     App.toast('已同步到雲端 ✓', 'success');
     App.refreshCurrentView();
@@ -312,26 +353,47 @@ const EntryManager = (() => {
 
   // ── 刪除日記（移到回收桶） ──
   async function remove(id) {
-    const entry = await getEntry(id);
+    // 用最新版本移進回收桶，避免萬一之後要復原，復原到的是舊版內容
+    const entry = await getEntryFresh(id);
     const summary = index.entries.find(e => e.id === id);
     const driveId = summary?.drive_file_id;
 
     await Drive.moveToTrash(entry, driveId);
 
-    index.entries = index.entries.filter(e => e.id !== id);
-    await Drive.saveIndex(index);
+    await patchIndexOnDrive(fresh => {
+      fresh.entries = fresh.entries.filter(e => e.id !== id);
+    });
     fullCache.delete(id);
     driveIdMap.delete(id);
   }
 
-  // ── 取得完整日記 ──
+  // ── 取得完整日記（一般用途：檢視、複製匯出等，可接受些微過時以換取速度）──
   async function getEntry(id) {
     if (fullCache.has(id)) return fullCache.get(id);
     await ensureLoaded();
     const summary = index.entries.find(e => e.id === id);
     if (!summary) throw new Error('Entry not found');
+    if (!summary.drive_file_id) throw new Error('日記還在同步中，請稍後再試');
     const entry = await Drive.loadEntry(summary.drive_file_id);
     fullCache.set(id, entry);
+    return entry;
+  }
+
+  // ── 取得完整日記（編輯用途：一律重新向 Drive 抓最新版本，不信任本機快取）──
+  // 用在「即將修改這篇日記」的場合（開啟編輯器、快速編輯標籤等），確保是拿最新內容當底，
+  // 不會因為分頁裡舊的快取資料，把其他分頁/裝置這段時間新增的內容蓋掉。
+  async function getEntryFresh(id) {
+    await ensureLoaded();
+    const summary = index.entries.find(e => e.id === id);
+    if (!summary) throw new Error('Entry not found');
+    if (!summary.drive_file_id) {
+      // 極少數情況：日記還在背景同步中，沒有「更新版本」可以抓，只能先用本機這份
+      const cached = fullCache.get(id);
+      if (cached) return cached;
+      throw new Error('日記還在同步中，請稍後再試');
+    }
+    const entry = await Drive.loadEntry(summary.drive_file_id);
+    fullCache.set(id, entry); // 順便更新快取，讓之後的 getEntry() 也拿到新的
     return entry;
   }
 
@@ -371,10 +433,15 @@ const EntryManager = (() => {
 
   async function setDayMood(dateStr, moodId) {
     await ensureLoaded();
-    if (moodId) index.day_moods[dateStr] = moodId;
-    else delete index.day_moods[dateStr];
-    await Drive.saveIndex(index);
+    await patchIndexOnDrive(fresh => {
+      if (moodId) fresh.day_moods[dateStr] = moodId;
+      else delete fresh.day_moods[dateStr];
+    });
   }
+
+  // 匯入批次過程中「這次到底動到哪幾篇」的名單，批次結束時只把這幾篇套進最新索引，
+  // 不會拿匯入開始時載入的（到了批次結束時可能已經過時的）本機清單整包蓋過去
+  const touchedImportIds = new Set();
 
   // ── 匯入專用：直接新增已建好的 entry（不儲存索引，批次結束後再呼叫 saveCurrentIndex）──
   async function addEntry(entry) {
@@ -383,6 +450,7 @@ const EntryManager = (() => {
     // 加入索引（不立即寫 Drive，等批次完成後統一儲存）
     const summary = makeSummary(entry, fileDriveId);
     index.entries.push(summary);
+    touchedImportIds.add(entry.id);
   }
 
   // ── 匯入專用：為已存在的 entry 補充照片（不重複新增）──
@@ -407,6 +475,7 @@ const EntryManager = (() => {
     fullCache.set(id, updated);
     const idx = index.entries.findIndex(e => e.id === id);
     if (idx >= 0) index.entries[idx] = makeSummary(updated, summary.drive_file_id);
+    touchedImportIds.add(id);
   }
 
   // ── 匯入專用：為已存在的 entry 補充影片（不重複新增）──
@@ -429,13 +498,24 @@ const EntryManager = (() => {
     fullCache.set(id, updated);
     const idx = index.entries.findIndex(e => e.id === id);
     if (idx >= 0) index.entries[idx] = makeSummary(updated, summary.drive_file_id);
+    touchedImportIds.add(id);
   }
 
   // ── 匯入專用：批次完成後儲存最終索引 ──
+  // 重新抓 Drive 上最新索引，只把這次匯入批次實際動過的那幾篇套進去，避免拿匯入開始時
+  // （匯入過程可能長達數分鐘）載入的本機清單整包蓋過去，蓋掉這段期間其他分頁的變更
   async function saveCurrentIndex() {
-    index.entries.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
-    await Drive.saveIndex(index);
+    const touchedIds = [...touchedImportIds];
+    touchedImportIds.clear();
+    if (!touchedIds.length) return;
+
+    await patchIndexOnDrive(fresh => {
+      for (const id of touchedIds) {
+        const summary = index.entries.find(e => e.id === id);
+        if (summary) upsertRawSummaryInto(fresh, summary);
+      }
+    });
   }
 
-  return { load, create, update, remove, getEntry, getIndex, addEntry, addImportedPhotos, addImportedVideos, saveCurrentIndex, getDayMood, getAllDayMoods, setDayMood };
+  return { load, create, update, remove, getEntry, getEntryFresh, getIndex, addEntry, addImportedPhotos, addImportedVideos, saveCurrentIndex, getDayMood, getAllDayMoods, setDayMood };
 })();

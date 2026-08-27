@@ -204,7 +204,9 @@ const App = (() => {
       closeModal('view-modal');
       showLoading('載入日記…');
       try {
-        const entry = await EntryManager.getEntry(id);
+        // 編輯前一律重新抓 Drive 上最新版本，避免拿分頁裡可能過時的快取內容當底去改，
+        // 把其他分頁/裝置這段時間新增的內容蓋掉
+        const entry = await EntryManager.getEntryFresh(id);
         hideLoading();
         Editor.open(entry);
       } catch (e) {
@@ -379,15 +381,11 @@ const App = (() => {
         SmartTagPicker.open(editTagBtn, viewEntryTags, async (newIds) => {
           viewEntryTags = newIds;
           renderViewTags();
-          // 背景儲存（不等待，不擋 UI）
+          // 背景儲存（不等待，不擋 UI）——只傳要改的 tags，其餘欄位（內文、時間、照片）
+          // 讓 update() 自己重新向 Drive 抓最新版本再套用，不要在這裡先讀一份可能過時的
+          // 內容再整包傳回去，避免把其他分頁這段時間新增的內容蓋掉
           try {
-            const fullEntry = await EntryManager.getEntry(entry.id);
-            await EntryManager.update(entry.id, {
-              content: fullEntry.content,
-              datetime: fullEntry.created_at,
-              tags: newIds,
-              keepPhotoIds: fullEntry.photos.map(p => p.drive_file_id),
-            });
+            await EntryManager.update(entry.id, { tags: newIds });
           } catch(e) { console.warn('標籤儲存失敗', e); }
         });
       };
