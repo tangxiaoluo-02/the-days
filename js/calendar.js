@@ -247,9 +247,9 @@ const Calendar = (() => {
         const d  = new Date(entry.created_at);
         const hh = String(d.getHours()).padStart(2, '0');
         const mm = String(d.getMinutes()).padStart(2, '0');
-        return `${hh}:${mm}\n${entry.content || ''}`;
+        return `⏳${hh}:${mm}\n${entry.content || ''}`;
       });
-      await copyTextToClipboard(blocks.join('\n\n'));
+      await copyTextToClipboard(blocks.join('\n\n-----\n'));
       App.toast(`已複製 ${entries.length} 則日記文字 ✓`, 'success');
     } catch (e) {
       console.error('[複製本日文字] 失敗:', e);
