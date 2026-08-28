@@ -433,6 +433,20 @@ const EntryManager = (() => {
 
   async function setDayMood(dateStr, moodId) {
     await ensureLoaded();
+    // ① 立即更新本機，讓 UI 馬上反映（跟新增/編輯日記同一套「立即顯示、背景同步」原則，
+    //    避免像之前那樣要等兩次網路來回才有反應，讓殿下誤以為沒點到而連點好幾次）
+    if (moodId) index.day_moods[dateStr] = moodId;
+    else delete index.day_moods[dateStr];
+
+    // ② 背景安全寫回 Drive（不等待）——沿用 patchIndexOnDrive 的「先抓最新再套用」邏輯，
+    //    不會因為改成樂觀更新就重新引入蓋掉其他分頁資料的風險
+    _saveDayMoodInBackground(dateStr, moodId).catch(e => {
+      console.error('[打卡心情] 背景同步失敗:', e);
+      App.toast('心情同步失敗，請稍後重試', 'error');
+    });
+  }
+
+  async function _saveDayMoodInBackground(dateStr, moodId) {
     await patchIndexOnDrive(fresh => {
       if (moodId) fresh.day_moods[dateStr] = moodId;
       else delete fresh.day_moods[dateStr];

@@ -55,7 +55,7 @@ const Editor = (() => {
   }
 
   // ── 開啟編輯器 ──
-  async function open(entry = null) {
+  async function open(entry = null, opts = {}) {
     editingId    = entry?.id || null;
     pendingPhotos = [];
     keepPhotoIds  = [];
@@ -65,8 +65,19 @@ const Editor = (() => {
 
     document.getElementById('editor-title').textContent = entry ? '編輯日記' : '新增日記';
 
-    // 設定時間
-    const now = entry ? new Date(entry.created_at) : new Date();
+    // 設定時間：編輯既有日記用原本的時間；新增日記如果有指定預設日期（例如月曆頁選了
+    // 某一天再按新增，方便補記），用「那天＋現在的時分」；否則就是現在
+    let now;
+    if (entry) {
+      now = new Date(entry.created_at);
+    } else if (opts.defaultDate) {
+      const current = new Date();
+      const hh = String(current.getHours()).padStart(2, '0');
+      const mm = String(current.getMinutes()).padStart(2, '0');
+      now = new Date(`${opts.defaultDate}T${hh}:${mm}:00`);
+    } else {
+      now = new Date();
+    }
     dateInput().value = toLocalDatetimeString(now);
 
     // 設定內容

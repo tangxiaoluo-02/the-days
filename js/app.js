@@ -92,7 +92,12 @@ const App = (() => {
     });
 
     // 新增日記
-    document.getElementById('new-entry-btn').addEventListener('click', () => Editor.open());
+    document.getElementById('new-entry-btn').addEventListener('click', () => {
+      // 在月曆頁選了某一天再按新增，直接帶入那天的日期，方便補記過去的日記，
+      // 不用開了編輯器才手動點時間欄位改日期
+      const selectedDate = currentView === 'calendar' ? Calendar.getSelectedDate() : null;
+      Editor.open(null, selectedDate ? { defaultDate: selectedDate } : {});
+    });
     document.getElementById('today-prompt-btn').addEventListener('click', () => Editor.open());
 
     // 時間軸折疊/展開

@@ -282,5 +282,10 @@ const Calendar = (() => {
     document.body.removeChild(ta);
   }
 
-  return { render, prevMonth, nextMonth, goToday, copyDayText };
+  // 給「新增日記」按鈕用：目前有沒有選中某一天，讓補記那天日記時可以直接帶入日期
+  function getSelectedDate() {
+    return selectedDate;
+  }
+
+  return { render, prevMonth, nextMonth, goToday, copyDayText, getSelectedDate };
 })();
