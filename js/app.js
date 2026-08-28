@@ -232,6 +232,14 @@ const App = (() => {
       }
     });
 
+    // ── 查看日記：切換同一天的上一則／下一則 ──
+    document.getElementById('view-prev-btn').addEventListener('click', () => navigateViewEntry(-1));
+    document.getElementById('view-next-btn').addEventListener('click', () => navigateViewEntry(1));
+    attachSwipeNav(document.querySelector('#view-modal .modal-box'), {
+      onSwipeLeft:  () => navigateViewEntry(1),
+      onSwipeRight: () => navigateViewEntry(-1),
+    });
+
     // ── 搜尋頁面 ──
     document.getElementById('search-btn').addEventListener('click', openSearchPage);
     document.getElementById('search-back-btn').addEventListener('click', closeSearchPage);
@@ -304,6 +312,11 @@ const App = (() => {
       if (e.key === 'ArrowRight') lightboxNav(1);
       if (e.key === 'Escape')     closeLightbox();
     });
+    // 手機左右滑動切換照片（同一篇日記裡的其他張）
+    attachSwipeNav(document.getElementById('lightbox'), {
+      onSwipeLeft:  () => lightboxNav(1),
+      onSwipeRight: () => lightboxNav(-1),
+    });
   }
 
   // ════════════════════════
@@ -337,10 +350,20 @@ const App = (() => {
   // ════════════════════════
   //  查看日記
   // ════════════════════════
+  // 目前查看視窗「同一天」的日記清單＋目前是第幾則，用來做上一則／下一則切換
+  let viewDayEntries = [];
+  let viewDayIdx     = 0;
+
   async function viewEntry(id) {
     showLoading('載入日記…');
     try {
       const entry = await EntryManager.getEntry(id);
+      // 算出「這一天」的所有日記（依時間排序），讓查看視窗可以左右切換同一天的其他篇
+      const dayStr = entry.created_at.slice(0, 10);
+      viewDayEntries = EntryManager.getIndex()
+        .filter(e => e.created_at.slice(0, 10) === dayStr)
+        .sort((a, b) => a.created_at.localeCompare(b.created_at));
+      viewDayIdx = viewDayEntries.findIndex(e => e.id === id);
       hideLoading();
       renderViewModal(entry);
     } catch (e) {
@@ -349,9 +372,27 @@ const App = (() => {
     }
   }
 
+  // 切換到同一天的上一則／下一則（循環），不用關掉查看視窗回列表重選
+  async function navigateViewEntry(dir) {
+    if (viewDayEntries.length <= 1) return;
+    viewDayIdx = (viewDayIdx + dir + viewDayEntries.length) % viewDayEntries.length;
+    const nextId = viewDayEntries[viewDayIdx].id;
+    try {
+      const entry = await EntryManager.getEntry(nextId);
+      renderViewModal(entry);
+    } catch (e) {
+      toast('載入失敗：' + e.message, 'error');
+    }
+  }
+
   function renderViewModal(entry) {
     const modal = document.getElementById('view-modal');
     modal.dataset.entryId = entry.id;
+
+    // 只有這一天有不只一篇日記時，才顯示上一則／下一則按鈕
+    const hasMultiple = viewDayEntries.length > 1;
+    document.getElementById('view-prev-btn').classList.toggle('view-nav-invisible', !hasMultiple);
+    document.getElementById('view-next-btn').classList.toggle('view-nav-invisible', !hasMultiple);
 
     // 時間
     document.getElementById('view-datetime').textContent =
@@ -447,6 +488,7 @@ const App = (() => {
     }
 
     openModal('view-modal');
+    modal.querySelector('.modal-box').scrollTop = 0; // 切到下一則時從頂部開始看，不要沿用上一則的捲動位置
   }
 
   // ════════════════════════
@@ -578,6 +620,26 @@ const App = (() => {
     } catch (e) {
       list.innerHTML = `<p style="color:var(--danger);padding:8px">載入失敗：${e.message}</p>`;
     }
+  }
+
+  // ── 通用左右滑動偵測（手機用）：判斷手勢明顯偏水平方向且滑動距離夠遠才觸發，
+  //    避免跟畫面正常的上下捲動互相打架 ──
+  function attachSwipeNav(el, { onSwipeLeft, onSwipeRight, threshold = 50 } = {}) {
+    let startX = 0, startY = 0, tracking = false;
+    el.addEventListener('touchstart', (e) => {
+      if (e.touches.length !== 1) { tracking = false; return; }
+      startX = e.touches[0].clientX;
+      startY = e.touches[0].clientY;
+      tracking = true;
+    }, { passive: true });
+    el.addEventListener('touchend', (e) => {
+      if (!tracking) return;
+      tracking = false;
+      const dx = e.changedTouches[0].clientX - startX;
+      const dy = e.changedTouches[0].clientY - startY;
+      if (Math.abs(dx) < threshold || Math.abs(dx) < Math.abs(dy)) return; // 太短或偏垂直，當作捲動不處理
+      if (dx < 0) onSwipeLeft?.(); else onSwipeRight?.();
+    }, { passive: true });
   }
 
   // ════════════════════════

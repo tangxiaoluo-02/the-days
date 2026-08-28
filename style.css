@@ -917,6 +917,28 @@ svg.spark { width: 100%; height: 44px; display: block; }
   color: var(--text-2);
   font-weight: 600;
 }
+.view-nav-and-time {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+}
+.view-nav-btn {
+  flex: none;
+  width: 26px; height: 26px;
+  border-radius: 50%;
+  font-size: 16px;
+  color: var(--text-3);
+  transition: all 0.15s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.view-nav-btn:hover { background: var(--surface-2); color: var(--primary); }
+.view-nav-btn.view-nav-invisible { visibility: hidden; } /* 保留版位不跳動，只有一則時單純看不到，
+  用專屬 class 而不是共用的 .hidden，避免被全站 .hidden 的 display:none!important 蓋過去變成版位跳動 */
+/* 讓查看視窗的內容區允許左右滑動手勢切換日記，不會被瀏覽器當成上下捲動搶走 */
+#view-modal .modal-box { touch-action: pan-y; }
 .view-tags {
   display: flex;
   flex-wrap: wrap;
