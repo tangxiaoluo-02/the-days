@@ -92,6 +92,14 @@ const EntryManager = (() => {
     return plainText(content).slice(0, 120);
   }
 
+  // ── 如果內文第一行是標題，回傳標題文字轉純文字後的字元長度，方便卡片預覽把這段文字加粗；
+  //    不是標題就回傳 0。跟 makePreview 套用同一組 plainText 規則，確保長度跟 preview 字串對得上。
+  function makePreviewHeadingLen(content) {
+    const firstLine = content.replace(/\r\n/g, '\n').split('\n')[0] || '';
+    const m = firstLine.match(/^#{1,6}\s+(.+)$/);
+    return m ? plainText(m[1]).length : 0;
+  }
+
   // ── 計算字數 ──
   function wordCount(content) {
     return plainText(content).replace(/\s+/g, '').length;
@@ -439,6 +447,7 @@ const EntryManager = (() => {
       created_at: entry.created_at,
       updated_at: entry.updated_at,
       preview: makePreview(entry.content),
+      heading_len: makePreviewHeadingLen(entry.content),
       has_photos: entry.has_photos,
       has_videos: entry.has_videos || false,
       has_links:  entry.has_links,

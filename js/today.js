@@ -109,7 +109,7 @@ const Today = (() => {
 
       const preview = document.createElement('div');
       preview.className = 'entry-card-preview';
-      preview.textContent = e.preview || '（無文字內容）';
+      preview.innerHTML = entryPreviewHtml(e);
 
       card.appendChild(time);
       card.appendChild(preview);

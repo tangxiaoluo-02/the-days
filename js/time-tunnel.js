@@ -75,7 +75,7 @@ const TimeTunnel = (() => {
 
     const preview = document.createElement('div');
     preview.className = 'entry-card-preview';
-    preview.textContent = entry.preview || '（無文字內容）';
+    preview.innerHTML = entryPreviewHtml(entry);
 
     card.appendChild(time);
     card.appendChild(preview);
@@ -83,15 +83,8 @@ const TimeTunnel = (() => {
     const thumbs = renderEntryThumbs(entry);
     if (thumbs) card.appendChild(thumbs);
 
-    if (entry.tags?.length) {
-      const tagsRow = document.createElement('div');
-      tagsRow.className = 'entry-card-tags';
-      for (const tagId of entry.tags) {
-        const tag = TagManager.getById(tagId);
-        if (tag) tagsRow.appendChild(Editor.makeTagChip(tag));
-      }
-      card.appendChild(tagsRow);
-    }
+    const tags = renderEntryTags(entry);
+    if (tags) card.appendChild(tags);
 
     card.addEventListener('click', () => App.viewEntry(entry.id));
     return card;

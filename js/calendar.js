@@ -150,7 +150,7 @@ const Calendar = (() => {
 
       const preview = document.createElement('div');
       preview.className = 'entry-card-preview';
-      preview.textContent = e.preview || '（無文字內容）';
+      preview.innerHTML = entryPreviewHtml(e);
 
       item.appendChild(time);
       item.appendChild(preview);
