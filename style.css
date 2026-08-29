@@ -756,73 +756,30 @@ svg.spark { width: 100%; height: 44px; display: block; }
 .day-mood-badge { display: inline-flex; align-items: center; gap: 4px; vertical-align: middle; }
 .day-mood-badge svg { display: block; }
 
-/* ── Editor toolbar ── */
-.editor-toolbar {
-  display: flex;
-  align-items: center;
-  gap: 2px;
-  padding: 8px 16px;
-  border-bottom: 1px solid var(--border);
-  background: var(--surface-2);
-  flex-wrap: wrap;
-}
-.editor-toolbar button {
-  padding: 4px 8px;
-  border-radius: var(--radius-sm);
-  font-size: 13px;
-  color: var(--text-2);
-  font-weight: 600;
-  transition: all 0.15s;
-  min-width: 28px;
-  text-align: center;
-}
-.editor-toolbar button:hover { background: var(--border); color: var(--text); }
-.toolbar-sep { color: var(--border-2); padding: 0 4px; }
-.color-btn {
-  display: flex;
-  align-items: center;
-  cursor: pointer;
-  padding: 4px 6px;
-  border-radius: var(--radius-sm);
-  transition: background 0.15s;
-  font-size: 14px;
-}
-.color-btn:hover { background: var(--border); }
-.color-btn input[type="color"] {
-  width: 0; height: 0;
-  opacity: 0;
-  position: absolute;
-}
-
-/* ── 編輯視窗內容捲動區（時間/標籤/工具列/內文/照片都在這裡面一起捲） ── */
+/* ── 編輯視窗內容捲動區（時間/標籤/編輯器/照片都在這裡面一起捲） ── */
 .editor-scroll {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
 }
 
-/* ── Editor area ── */
+/* ── Editor area（所見即所得，Toast UI Editor：整個外框去掉，融入編輯視窗本身的邊框）── */
 #editor-area {
   display: flex;
   flex-direction: column;
 }
-#entry-content {
-  width: 100%;
-  flex: 1;
-  min-height: 180px;
-  max-height: 380px;
-  padding: 16px 20px;
+#entry-editor .toastui-editor-defaultUI {
   border: none;
-  outline: none;
-  resize: vertical;
-  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+}
+#entry-editor .toastui-editor-toolbar {
+  background: var(--surface-2);
+  border-bottom: 1px solid var(--border);
+}
+#entry-editor .ProseMirror {
+  padding: 16px 20px !important;
   font-size: 15px;
   line-height: 1.8;
-}
-#entry-preview {
-  padding: 16px 20px;
-  min-height: 180px;
-  flex: 1;
 }
 
 /* ── Photos ── */
@@ -1944,7 +1901,7 @@ svg.spark { width: 100%; height: 44px; display: block; }
   .modal-header,
   .modal-footer { flex-shrink: 0; }
 
-  #entry-content { min-height: 200px; resize: none; }
+  #entry-editor .ProseMirror { min-height: 200px; }
 
   /* meta 欄位緊湊顯示 */
   .editor-meta {

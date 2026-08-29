@@ -129,16 +129,6 @@ const App = (() => {
     document.getElementById('save-entry-btn').addEventListener('click', () => Editor.save());
     document.getElementById('reset-time-btn').addEventListener('click', () => Editor.resetTime());
 
-    // Markdown 工具列
-    document.querySelectorAll('.editor-toolbar [data-action]').forEach(btn => {
-      btn.addEventListener('click', () => Editor.applyFormat(btn.dataset.action));
-    });
-
-    // 顏色選擇器
-    document.getElementById('font-color-picker').addEventListener('input', (e) => {
-      Editor.applyColor(e.target.value);
-    });
-
     // 照片上傳
     document.getElementById('photo-input').addEventListener('change', (e) => {
       Editor.handlePhotoInput(Array.from(e.target.files));

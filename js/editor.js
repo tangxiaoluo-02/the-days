@@ -7,16 +7,45 @@ const Editor = (() => {
   let keepVideoIds  = [];    // 編輯時保留的舊影片 drive_file_id
   let selectedTags  = [];    // 已選擇的 tag id
 
-  const textarea   = () => document.getElementById('entry-content');
-  const preview    = () => document.getElementById('entry-preview');
   const photoList  = () => document.getElementById('photo-list');
   const videoList  = () => document.getElementById('video-list');
   const dateInput  = () => document.getElementById('entry-datetime');
 
+  // ── 所見即所得編輯器（Toast UI Editor，鎖定 WYSIWYG 模式，殿下不會看到 markdown 語法符號，
+  //    選字加粗/設標題/改顏色會直接看到效果）。內容存取還是走 markdown（getMarkdown/setMarkdown），
+  //    所以其他所有功能（搜尋、卡片預覽、Day One 匯入匯出）完全不用改，都還是處理 markdown 純文字。──
+  let tuiEditor = null;
+
+  function ensureEditor() {
+    if (tuiEditor) return tuiEditor;
+    const { Editor: ToastEditor } = toastui;
+    const { colorSyntax } = ToastEditor.plugin;
+    tuiEditor = new ToastEditor({
+      el: document.getElementById('entry-editor'),
+      height: 'auto',
+      minHeight: '180px',
+      initialEditType: 'wysiwyg',
+      hideModeSwitch: true,
+      usageStatistics: false,
+      language: 'zh-TW',
+      placeholder: '今天發生了什麼…',
+      toolbarItems: [
+        ['heading', 'bold', 'italic'],
+        ['ul', 'ol', 'quote'],
+        ['hr'],
+      ],
+      plugins: [colorSyntax],
+    });
+    tuiEditor.on('change', () => {
+      clearTimeout(draftDebounceTimer);
+      draftDebounceTimer = setTimeout(saveDraftNow, 1500);
+    });
+    return tuiEditor;
+  }
+
   // ── 草稿自動暫存（存在本機瀏覽器，寫沒存也不怕遺失）──
   const DRAFT_KEY = 'td_draft';
   let draftDebounceTimer  = null;
-  let draftHandlerBound   = false;
 
   function loadMatchingDraft(forEditingId) {
     try {
@@ -29,7 +58,7 @@ const Editor = (() => {
   }
 
   function saveDraftNow() {
-    const content = textarea().value;
+    const content = ensureEditor().getMarkdown();
     if (!content.trim()) { clearDraft(); return; }
     try {
       localStorage.setItem(DRAFT_KEY, JSON.stringify({
@@ -43,15 +72,6 @@ const Editor = (() => {
 
   function clearDraft() {
     try { localStorage.removeItem(DRAFT_KEY); } catch (e) {}
-  }
-
-  function bindDraftAutoSave() {
-    if (draftHandlerBound) return;
-    draftHandlerBound = true;
-    textarea().addEventListener('input', () => {
-      clearTimeout(draftDebounceTimer);
-      draftDebounceTimer = setTimeout(saveDraftNow, 1500);
-    });
   }
 
   // ── 開啟編輯器 ──
@@ -81,11 +101,7 @@ const Editor = (() => {
     dateInput().value = toLocalDatetimeString(now);
 
     // 設定內容
-    textarea().value = entry?.content || '';
-    preview().innerHTML = '';
-    preview().classList.add('hidden');
-    textarea().classList.remove('hidden');
-    document.getElementById('preview-toggle-btn').title = '切換預覽';
+    ensureEditor().setMarkdown(entry?.content || '');
 
     // 清空照片／影片
     photoList().innerHTML = '';
@@ -110,7 +126,7 @@ const Editor = (() => {
     // 還原未儲存的草稿（同一篇 / 同樣是新增才還原）
     const draft = loadMatchingDraft(editingId);
     if (draft) {
-      textarea().value = draft.content;
+      ensureEditor().setMarkdown(draft.content);
       if (draft.datetime) dateInput().value = draft.datetime;
       if (draft.tags) selectedTags = [...draft.tags];
       setTimeout(() => App.toast('已還原上次未儲存的草稿 📝', ''), 150);
@@ -118,7 +134,6 @@ const Editor = (() => {
 
     // 渲染標籤選擇
     renderSelectedTags();
-    bindDraftAutoSave();
 
     // 天氣/位置
     document.getElementById('weather-info').textContent = entry?.weather
@@ -131,7 +146,7 @@ const Editor = (() => {
     Editor._pendingLocation = entry?.location || null;
 
     openModal('editor-modal');
-    textarea().focus();
+    ensureEditor().focus();
   }
 
   // ── 轉換時間為 <input datetime-local> 格式 ──
@@ -144,51 +159,6 @@ const Editor = (() => {
   // ── 重設時間為現在 ──
   function resetTime() {
     dateInput().value = toLocalDatetimeString(new Date());
-  }
-
-  // ── Markdown 工具列 ──
-  function applyFormat(action) {
-    const ta = textarea();
-    const start = ta.selectionStart;
-    const end   = ta.selectionEnd;
-    const sel   = ta.value.slice(start, end);
-
-    const wrap = (before, after = before) => {
-      const text = sel || '文字';
-      insertAt(ta, start, end, `${before}${text}${after}`);
-    };
-    const linePrefix = (prefix) => {
-      const lineStart = ta.value.lastIndexOf('\n', start - 1) + 1;
-      ta.setSelectionRange(lineStart, lineStart);
-      insertAt(ta, lineStart, lineStart, prefix);
-    };
-
-    switch (action) {
-      case 'bold':    wrap('**'); break;
-      case 'italic':  wrap('*');  break;
-      case 'heading': linePrefix('## '); break;
-      case 'ul':      linePrefix('- '); break;
-      case 'ol':      linePrefix('1. '); break;
-      case 'quote':   linePrefix('> '); break;
-      case 'hr':      insertAt(ta, start, end, '\n---\n'); break;
-      case 'preview': togglePreview(); break;
-    }
-  }
-
-  function insertAt(ta, start, end, text) {
-    ta.value = ta.value.slice(0, start) + text + ta.value.slice(end);
-    ta.focus();
-    ta.setSelectionRange(start + text.length, start + text.length);
-  }
-
-  // ── 文字顏色 ──
-  function applyColor(color) {
-    const ta = textarea();
-    const start = ta.selectionStart;
-    const end   = ta.selectionEnd;
-    const sel   = ta.value.slice(start, end) || '文字';
-    const html  = `<span style="color:${color}">${sel}</span>`;
-    insertAt(ta, start, end, html);
   }
 
   // ── # Mention（已停用，保留備用）──
@@ -315,23 +285,7 @@ const Editor = (() => {
     ta.focus();
   }
 
-  // ── 切換預覽 ──
-  function togglePreview() {
-    const isPreview = !preview().classList.contains('hidden');
-    if (isPreview) {
-      preview().classList.add('hidden');
-      textarea().classList.remove('hidden');
-      document.getElementById('preview-toggle-btn').title = '切換預覽';
-    } else {
-      const md = textarea().value;
-      preview().innerHTML = renderMarkdown(md);
-      textarea().classList.add('hidden');
-      preview().classList.remove('hidden');
-      document.getElementById('preview-toggle-btn').title = '回到編輯';
-    }
-  }
-
-  // ── Markdown 渲染（含超連結自動偵測） ──
+  // ── Markdown 渲染（含超連結自動偵測，給查看日記全文用）──
   function renderMarkdown(text) {
     // 先把純 URL 轉成 Markdown link（避免重複處理 [text](url) 格式）
     const withLinks = text.replace(
@@ -684,7 +638,7 @@ const Editor = (() => {
 
   // ── 儲存 ──
   async function save() {
-    const content  = textarea().value.trim();
+    const content  = ensureEditor().getMarkdown().trim();
     // 手動解析 datetime-local 值（避免瀏覽器 UTC 解析差異）
     const [datePart, timePart] = dateInput().value.split('T');
     const [dy, dm, dd]  = datePart.split('-').map(Number);
@@ -746,8 +700,6 @@ const Editor = (() => {
     open,
     save,
     resetTime,
-    applyFormat,
-    applyColor,
     handlePhotoInput,
     handleVideoInput,
     openTagPicker,
