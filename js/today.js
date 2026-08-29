@@ -117,6 +117,9 @@ const Today = (() => {
       const thumbs = renderEntryThumbs(e);
       if (thumbs) card.appendChild(thumbs);
 
+      const tags = renderEntryTags(e);
+      if (tags) card.appendChild(tags);
+
       card.addEventListener('click', () => App.viewEntry(e.id));
       list.appendChild(card);
     }

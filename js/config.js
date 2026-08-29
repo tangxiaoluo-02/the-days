@@ -157,6 +157,19 @@ function renderEntryThumbs(entry) {
   return wrap;
 }
 
+/** 建立日記卡片用的標籤列，沒有標籤回傳 null。 */
+function renderEntryTags(entry) {
+  if (!entry.tags?.length) return null;
+
+  const wrap = document.createElement('div');
+  wrap.className = 'entry-card-tags';
+  for (const tagId of entry.tags) {
+    const tag = TagManager.getById(tagId);
+    if (tag) wrap.appendChild(Editor.makeTagChip(tag));
+  }
+  return wrap;
+}
+
 /** 回傳帶時區的 ISO 字串，如 "2026-05-12T01:30:00+08:00" */
 function toLocalISOString(d) {
   const date   = d || new Date();

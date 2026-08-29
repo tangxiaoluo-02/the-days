@@ -158,16 +158,8 @@ const Calendar = (() => {
       const thumbs = renderEntryThumbs(e);
       if (thumbs) item.appendChild(thumbs);
 
-      // 顯示標籤
-      if (e.tags?.length) {
-        const tagsRow = document.createElement('div');
-        tagsRow.className = 'entry-card-tags';
-        for (const tagId of e.tags) {
-          const tag = TagManager.getById(tagId);
-          if (tag) tagsRow.appendChild(Editor.makeTagChip(tag));
-        }
-        item.appendChild(tagsRow);
-      }
+      const tags = renderEntryTags(e);
+      if (tags) item.appendChild(tags);
 
       item.addEventListener('click', () => App.viewEntry(e.id));
       list.appendChild(item);
