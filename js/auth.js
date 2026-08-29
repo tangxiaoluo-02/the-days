@@ -5,7 +5,8 @@ const Auth = (() => {
   let tokenExpiry  = 0;
   let onLoginCb    = null;
   let onLogoutCb   = null;
-  let _silentAttempt = false; // 是否正在「悄悄續期」，用來決定失敗時要不要跳錯誤提示
+  let _silentAttempt  = false; // 是否正在「悄悄續期」，用來決定失敗時要不要跳錯誤提示
+  let _pendingRequest = null;  // 目前有沒有一個「跟 Google 要權杖」的請求正在跑（大家共用同一個）
 
   function init({ onLogin, onLogout }) {
     onLoginCb  = onLogin;
@@ -25,7 +26,8 @@ const Auth = (() => {
           console.error('OAuth error', err);
           // 悄悄續期失敗時不要跳錯誤提示，讓使用者安靜地看到登入畫面就好
           if (!_silentAttempt) App.toast('登入失敗，請再試一次', 'error');
-          _silentAttempt = false;
+          _silentAttempt   = false;
+          _pendingRequest  = null; // 這次請求結束了（失敗），下次呼叫才能重新開始，不會卡住
         },
       });
 
@@ -45,10 +47,29 @@ const Auth = (() => {
         // 試著在背景重新要一次權杖，瀏覽器裡如果還留著 Google 的登入狀態，
         // 通常不需要殿下再手動點一次「登入」。
         _silentAttempt = true;
-        tokenClient.requestAccessToken({ prompt: '' });
+        requestToken();
       }
     };
     tryInit();
+  }
+
+  // 統一的「跟 Google 要一次權杖」入口——同一時間只允許一個請求在跑，其他呼叫者
+  // 直接跟著等同一個結果，不會各自另外開一個彈窗互相打架。
+  // 這是解決「頁面剛打開時背景悄悄續期」跟「殿下手動點登入」同時搶著跳出 Google
+  // 帳號選擇彈窗、選完又跳第二次、最後整個分頁當機這個問題的關鍵。
+  function requestToken() {
+    if (_pendingRequest) return _pendingRequest;
+    _pendingRequest = new Promise((resolve) => {
+      const origCallback = tokenClient.callback;
+      tokenClient.callback = (resp) => {
+        tokenClient.callback = origCallback; // 用完就恢復，避免下次疊加包裝
+        _pendingRequest = null;
+        origCallback(resp);
+        resolve(resp);
+      };
+      tokenClient.requestAccessToken({ prompt: '' });
+    });
+    return _pendingRequest;
   }
 
   function handleTokenResponse(resp) {
@@ -84,7 +105,14 @@ const Auth = (() => {
         return;
       }
     }
-    tokenClient.requestAccessToken({ prompt: '' });
+    if (_pendingRequest) {
+      // 已經有一個請求在背景跑了（通常是頁面剛打開時的悄悄續期），跟著等同一個
+      // 結果就好，不要再另外開一個彈窗
+      App.toast('登入處理中，請稍候…', '');
+      await _pendingRequest;
+      return;
+    }
+    requestToken();
   }
 
   function waitForTokenClient(timeoutMs) {
@@ -111,23 +139,15 @@ const Auth = (() => {
 
   async function getToken() {
     if (!accessToken || Date.now() >= tokenExpiry) {
-      // Token 過期，靜默刷新
-      await new Promise((resolve) => {
-        const saved = localStorage.getItem('td_token');
-        if (saved) {
-          const { expiry } = JSON.parse(saved);
-          if (Date.now() >= expiry) {
-            tokenClient.requestAccessToken({ prompt: '' });
-            const origCb = tokenClient.callback;
-            tokenClient.callback = (resp) => {
-              origCb(resp);
-              resolve();
-            };
-            return;
-          }
+      // Token 過期，靜默刷新——一樣透過共用的 requestToken()，避免跟其他地方的
+      // 請求互相打架
+      const saved = localStorage.getItem('td_token');
+      if (saved) {
+        const { expiry } = JSON.parse(saved);
+        if (Date.now() >= expiry) {
+          await requestToken();
         }
-        resolve();
-      });
+      }
     }
     return accessToken;
   }
