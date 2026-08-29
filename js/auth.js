@@ -7,6 +7,8 @@ const Auth = (() => {
   let onLogoutCb   = null;
   let _silentAttempt  = false; // 是否正在「悄悄續期」，用來決定失敗時要不要跳錯誤提示
   let _pendingRequest = null;  // 目前有沒有一個「跟 Google 要權杖」的請求正在跑（大家共用同一個）
+  let _pendingReject  = null;  // 配合 _pendingRequest，讓 error_callback 也能讓對應的 promise 正確結束
+                                // （不然請求失敗時 promise 會永遠卡著，呼叫端會整個掛住不動）
 
   function init({ onLogin, onLogout }) {
     onLoginCb  = onLogin;
@@ -28,6 +30,14 @@ const Auth = (() => {
           if (!_silentAttempt) App.toast('登入失敗，請再試一次', 'error');
           _silentAttempt   = false;
           _pendingRequest  = null; // 這次請求結束了（失敗），下次呼叫才能重新開始，不會卡住
+          // 一定要把對應的 promise 也 reject 掉，不然任何一個正在 await 這個請求結果的
+          // 呼叫端（例如存日記時要抓權杖）會永遠卡住、既不成功也不失敗，殿下會看到
+          // 「按了完成，畫面卻沒有真的存到」這種最難查的問題
+          if (_pendingReject) {
+            const reject = _pendingReject;
+            _pendingReject = null;
+            reject(new Error(err?.type || '登入權杖續期失敗'));
+          }
         },
       });
 
@@ -47,7 +57,7 @@ const Auth = (() => {
         // 試著在背景重新要一次權杖，瀏覽器裡如果還留著 Google 的登入狀態，
         // 通常不需要殿下再手動點一次「登入」。
         _silentAttempt = true;
-        requestToken();
+        requestToken().catch(() => {}); // 失敗的話 error_callback 已經處理過了，這裡不用重複反應
       }
     };
     tryInit();
@@ -59,13 +69,18 @@ const Auth = (() => {
   // 帳號選擇彈窗、選完又跳第二次、最後整個分頁當機這個問題的關鍵。
   function requestToken() {
     if (_pendingRequest) return _pendingRequest;
-    _pendingRequest = new Promise((resolve) => {
+    _pendingRequest = new Promise((resolve, reject) => {
+      _pendingReject = reject;
       const origCallback = tokenClient.callback;
       tokenClient.callback = (resp) => {
         tokenClient.callback = origCallback; // 用完就恢復，避免下次疊加包裝
         _pendingRequest = null;
+        _pendingReject  = null;
         origCallback(resp);
-        resolve(resp);
+        // Google 有時候不是走 error_callback，而是直接用這個「成功」callback
+        // 回傳一個帶 error 欄位的結果——這種情況也要 reject，不然一樣會卡住
+        if (resp?.error) reject(new Error(resp.error));
+        else resolve(resp);
       };
       tokenClient.requestAccessToken({ prompt: '' });
     });
@@ -107,12 +122,13 @@ const Auth = (() => {
     }
     if (_pendingRequest) {
       // 已經有一個請求在背景跑了（通常是頁面剛打開時的悄悄續期），跟著等同一個
-      // 結果就好，不要再另外開一個彈窗
+      // 結果就好，不要再另外開一個彈窗。這裡故意接一個空的 catch——失敗的話
+      // error_callback 自己已經跳過提示了，這裡不用重複顯示
       App.toast('登入處理中，請稍候…', '');
-      await _pendingRequest;
+      await _pendingRequest.catch(() => {});
       return;
     }
-    requestToken();
+    requestToken().catch(() => {});
   }
 
   function waitForTokenClient(timeoutMs) {

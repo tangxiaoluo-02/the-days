@@ -146,11 +146,15 @@ const EntryManager = (() => {
     index.entries.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
 
     // ② 背景上傳（不等待）
-    _uploadInBackground(id, entry, photoFiles, videoFiles).catch(e => {
+    const syncPromise = _uploadInBackground(id, entry, photoFiles, videoFiles);
+    syncPromise.catch(e => {
       console.error('背景同步失敗', e);
       App.toast('雲端同步失敗，請稍後重試', 'error');
     });
 
+    // 讓呼叫端（編輯器的草稿機制）也能知道背景真正存到雲端有沒有成功，
+    // 不是只看這個函式本身有沒有回傳就以為已經存好了
+    entry._syncPromise = syncPromise;
     return entry;
   }
 
@@ -164,13 +168,11 @@ const EntryManager = (() => {
 
     // ▶ 任務 B：上傳照片／影片 → 存完整 entry → 更新索引
     if (photoFiles.length === 0 && videoFiles.length === 0) {
-      // 沒有照片影片，等任務 A 完成後就好
-      try {
-        await _saveTextOnly(id, entry);
-        App.toast('已同步到雲端 ✓', 'success');
-      } catch(e) {
-        App.toast('同步失敗，請稍後重試', 'error');
-      }
+      // 沒有照片影片，等任務 A 完成後就好——這裡刻意不要自己 try/catch 吞掉失敗，
+      // 讓錯誤往外拋，外層呼叫端（create/update 的 syncPromise）才能正確知道
+      // 這次到底有沒有真的存到雲端，不然殿下編輯器裡的草稿機制會誤判成功
+      await _saveTextOnly(id, entry);
+      App.toast('已同步到雲端 ✓', 'success');
       return;
     }
 
@@ -296,11 +298,14 @@ const EntryManager = (() => {
     index.entries.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
 
     // ② 背景上傳新照片/影片、存回 Drive（不等待）
-    _updateInBackground(id, updated, newPhotoFiles, tempIds, keptOldPhotos, newVideoFiles, tempVideoIds, keptOldVideos, entry.created_at, driveId).catch(e => {
+    const syncPromise = _updateInBackground(id, updated, newPhotoFiles, tempIds, keptOldPhotos, newVideoFiles, tempVideoIds, keptOldVideos, entry.created_at, driveId);
+    syncPromise.catch(e => {
       console.error('背景同步失敗', e);
       App.toast('雲端同步失敗，請稍後重試', 'error');
     });
 
+    // 讓呼叫端（編輯器的草稿機制）也能知道背景真正存到雲端有沒有成功
+    updated._syncPromise = syncPromise;
     return updated;
   }
 

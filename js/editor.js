@@ -706,20 +706,30 @@ const Editor = (() => {
     };
 
     // 新增／編輯都一樣：立即關閉、立即顯示，照片在背景上傳
+    let savedEntry;
     try {
       if (editingId) {
-        await EntryManager.update(editingId, data);
+        savedEntry = await EntryManager.update(editingId, data);
       } else {
-        await EntryManager.create(data);
+        savedEntry = await EntryManager.create(data);
       }
     } catch (e) {
       App.toast((editingId ? '更新失敗：' : '儲存失敗：') + e.message, 'error');
       return;
     }
 
-    clearDraft(); // 存成功了，草稿就不需要了
     closeModal('editor-modal');
     App.refreshCurrentView();
+
+    // 草稿要等背景真的把這篇存到雲端成功才清掉，不能在這裡就清——這一步只代表
+    // 「本機畫面已經樂觀顯示」，真正的雲端寫入是背景在跑，萬一背景失敗（例如
+    // 登入權杖剛好過期、續期失敗），草稿繼續留著才能保住殿下打的內容，不然就會
+    // 變成「畫面看起來存了、草稿卻已經被清掉，結果雲端根本沒真的存到」。
+    savedEntry._syncPromise
+      ?.then(() => clearDraft())
+      .catch(() => {
+        App.toast('⚠️ 這篇日記可能還沒真的存到雲端，請檢查網路後重新整理頁面確認，內容還留著草稿裡', 'error');
+      });
     if (pendingPhotos.length > 0 || pendingVideos.length > 0) {
       App.toast((editingId ? '日記已更新，照片／影片上傳中… ⏫' : '日記已儲存，照片／影片上傳中… ⏫'), '');
     } else {
