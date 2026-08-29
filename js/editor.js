@@ -583,13 +583,14 @@ const Editor = (() => {
   function makeTagChip(tag, removable = false) {
     const chip = document.createElement('span');
     chip.className = 'tag-chip';
-    chip.style.background = tag.color + '22';
-    chip.style.color = tag.color;
-    chip.style.border = `1px solid ${tag.color}44`;
+    styleTagChip(chip, tag.color);
 
+    // 馬卡龍風格：整片晶片已經是彩色背景了，圓點只當一個淡淡的裝飾重點，
+    // 不用再顯示色票本身的顏色（跟色票同色反而會在彩色背景上完全隱形）
     const dot = document.createElement('span');
     dot.className = 'tag-color-dot';
-    dot.style.background = tag.color;
+    dot.style.background = TAG_CHIP_INK;
+    dot.style.opacity = '0.35';
     chip.appendChild(dot);
 
     const name = document.createElement('span');

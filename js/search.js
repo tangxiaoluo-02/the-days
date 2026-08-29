@@ -203,10 +203,12 @@ const Search = (() => {
       if (!tag) continue;
       const chip = document.createElement('span');
       chip.className = 'tag-chip';
-      chip.style.cssText = `background:${tag.color}22;color:${tag.color};border:1px solid ${tag.color}44;cursor:pointer`;
+      styleTagChip(chip, tag.color);
+      chip.style.cursor = 'pointer';
       const dot = document.createElement('span');
       dot.className = 'tag-color-dot';
-      dot.style.background = tag.color;
+      dot.style.background = TAG_CHIP_INK;
+      dot.style.opacity = '0.35';
       const nm = document.createElement('span');
       nm.textContent = tag.name;
       const x = document.createElement('span');
