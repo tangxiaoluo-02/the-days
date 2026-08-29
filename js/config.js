@@ -170,20 +170,15 @@ function renderEntryTags(entry) {
   return wrap;
 }
 
-/** 產生日記卡片預覽用的 HTML：如果內文第一行是標題，開頭那段文字會加粗顯示，
- *  讓卡片上也看得出「這篇有標題」，跟點開全文看到的粗體標題呼應。
- *  相容舊資料：索引裡還沒有 heading_len（改版前存的、之後沒再編輯過）會自動退回純文字顯示。 */
+/** 回傳日記卡片預覽用的 HTML：優先用索引裡存好的 preview_html（保留標題/粗體/斜體/行內程式碼），
+ *  讓卡片跟點開全文看到的格式呼應。
+ *  相容舊資料：索引裡還沒有 preview_html（改版前存的、之後沒再編輯過）會自動退回純文字顯示。 */
 function entryPreviewHtml(entry) {
+  if (entry.preview_html) return entry.preview_html;
+
   const text = entry.preview;
   if (!text) return '（無文字內容）';
-
-  const escapeHtml = s => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-  const len = entry.heading_len || 0;
-  if (!len) return escapeHtml(text);
-
-  const head = escapeHtml(text.slice(0, len));
-  const rest = escapeHtml(text.slice(len));
-  return rest ? `<strong>${head}</strong>${rest}` : `<strong>${head}</strong>`;
+  return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
 /** 回傳帶時區的 ISO 字串，如 "2026-05-12T01:30:00+08:00" */

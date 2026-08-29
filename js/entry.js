@@ -92,12 +92,64 @@ const EntryManager = (() => {
     return plainText(content).slice(0, 120);
   }
 
-  // ── 如果內文第一行是標題，回傳標題文字轉純文字後的字元長度，方便卡片預覽把這段文字加粗；
-  //    不是標題就回傳 0。跟 makePreview 套用同一組 plainText 規則，確保長度跟 preview 字串對得上。
-  function makePreviewHeadingLen(content) {
-    const firstLine = content.replace(/\r\n/g, '\n').split('\n')[0] || '';
-    const m = firstLine.match(/^#{1,6}\s+(.+)$/);
-    return m ? plainText(m[1]).length : 0;
+  // ── 產生「保留基本 markdown 格式」的預覽 HTML（標題／粗體／斜體／行內程式碼），
+  //    給卡片列表用，比純文字的 preview 更貼近點開全文看到的樣子。
+  //    逐行、逐字掃描直接輸出安全的 HTML（每個字元都先跳脫），不是拿 .preview 那份已經去除
+  //    markdown 語法的純文字來加工——因為語法符號在那一步就已經被拿掉，事後無法還原格式。
+  //    字數上限比照 makePreview 一樣抓「使用者看得到的文字」120 字（markdown 語法符號不算），
+  //    截斷發生在語法標記中間時，直接收尾不留下破損的 HTML。
+  function makePreviewHtml(content) {
+    const esc = s => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    const BUDGET = 120;
+    let budget = BUDGET;
+    let out = '';
+
+    const lines = content.replace(/\r\n/g, '\n').split('\n');
+    for (let li = 0; li < lines.length && budget > 0; li++) {
+      if (li > 0) out += '\n';
+
+      let line = lines[li].replace(/^>\s+/, ''); // 引用符號
+      const headingMatch = line.match(/^#{1,6}\s+(.+)$/);
+      if (headingMatch) line = headingMatch[1];
+
+      let lineOut = '';
+      let i = 0;
+      while (i < line.length && budget > 0) {
+        const rest = line.slice(i);
+        let m;
+        if ((m = rest.match(/^\*\*(.+?)\*\*/))) {
+          const take = m[1].slice(0, budget);
+          lineOut += `<strong>${esc(take)}</strong>`;
+          budget -= take.length;
+        } else if ((m = rest.match(/^\*(.+?)\*/))) {
+          const take = m[1].slice(0, budget);
+          lineOut += `<em>${esc(take)}</em>`;
+          budget -= take.length;
+        } else if ((m = rest.match(/^`(.+?)`/))) {
+          const take = m[1].slice(0, budget);
+          lineOut += `<code>${esc(take)}</code>`;
+          budget -= take.length;
+        } else if ((m = rest.match(/^!?\[(.*?)\]\([^)]*\)/))) {
+          const take = m[1].slice(0, budget);
+          lineOut += esc(take);
+          budget -= take.length;
+        } else if ((m = rest.match(/^<[^>]+>/))) {
+          // 跳過 HTML 標籤本身，不計入字數預算
+        } else {
+          lineOut += esc(line[i]);
+          budget -= 1;
+          i += 1;
+          continue;
+        }
+        i += m[0].length;
+      }
+
+      out += headingMatch ? `<strong>${lineOut}</strong>` : lineOut;
+    }
+
+    out = out.trim();
+    if (budget <= 0) out += '…';
+    return out;
   }
 
   // ── 計算字數 ──
@@ -447,7 +499,7 @@ const EntryManager = (() => {
       created_at: entry.created_at,
       updated_at: entry.updated_at,
       preview: makePreview(entry.content),
-      heading_len: makePreviewHeadingLen(entry.content),
+      preview_html: makePreviewHtml(entry.content),
       has_photos: entry.has_photos,
       has_videos: entry.has_videos || false,
       has_links:  entry.has_links,
