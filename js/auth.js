@@ -72,12 +72,31 @@ const Auth = (() => {
     });
   }
 
-  function login() {
+  async function login() {
     if (!tokenClient) {
-      App.toast('Google 服務尚未就緒，請稍後再試', 'error');
-      return;
+      // 剛打開頁面時，Google 的登入服務程式可能還在背景載入中，殿下這時點登入
+      // 以前會直接放棄、跳一個容易被忽略的提示，殿下常常沒注意到要再點一次。
+      // 改成在這裡等它準備好（最多 8 秒），準備好就自動繼續登入，不用殿下自己重試
+      App.toast('連線 Google 服務中，請稍候…', '');
+      const ready = await waitForTokenClient(8000);
+      if (!ready) {
+        App.toast('連線 Google 服務失敗，請檢查網路後重新整理頁面再試一次', 'error');
+        return;
+      }
     }
     tokenClient.requestAccessToken({ prompt: '' });
+  }
+
+  function waitForTokenClient(timeoutMs) {
+    return new Promise((resolve) => {
+      const start = Date.now();
+      const check = () => {
+        if (tokenClient) return resolve(true);
+        if (Date.now() - start > timeoutMs) return resolve(false);
+        setTimeout(check, 200);
+      };
+      check();
+    });
   }
 
   function logout() {
