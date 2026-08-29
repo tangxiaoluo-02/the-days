@@ -222,6 +222,18 @@ const TagManager = (() => {
       }
     }
 
+    // 合併目標可以選任何一個標籤（不限頂層），用縮排表示層級
+    const mergeSel = document.getElementById('tags-batch-merge-target');
+    if (mergeSel) {
+      mergeSel.innerHTML = '<option value="">合併到…</option>';
+      for (const t of getFlat()) {
+        const opt = document.createElement('option');
+        opt.value = t.id;
+        opt.textContent = (t._depth ? '　' : '') + t.name;
+        mergeSel.appendChild(opt);
+      }
+    }
+
     // 新增標籤的顏色選擇器（每次開啟重建，預設藍色）
     const colorSlot = document.getElementById('new-tag-color-picker');
     if (colorSlot) {
@@ -522,6 +534,38 @@ const TagManager = (() => {
     App.toast('已搬移 ✓', 'success');
   }
 
+  // ── 批次動作：合併——把選取的標籤全部合併進某一個目標標籤，
+  //    合併完來源標籤會被刪除（跟目標標籤同一個的話會自動跳過）。
+  //    用在「匯入 Day One 之後同一件事有兩個標籤」這種情境，例如把
+  //    「家人」合併進「家庭」，所有貼「家人」的日記會改貼「家庭」。
+  async function batchMergeInto(targetId) {
+    if (!selectedForBatch.size) return;
+    if (!targetId) { App.toast('請先選擇要合併到哪個標籤', 'error'); return; }
+    const targetTag = getById(targetId);
+    if (!targetTag) return;
+
+    const sourceIds = [...selectedForBatch].filter(id => id !== targetId);
+    if (!sourceIds.length) { App.toast('選取的標籤裡沒有可以合併的（跟目標標籤是同一個）', 'error'); return; }
+
+    if (!confirm(`確定要把選取的 ${sourceIds.length} 個標籤都合併進「${targetTag.name}」嗎？\n\n這些標籤底下的日記會全部改貼「${targetTag.name}」，原本的標籤會被刪除，這個動作沒辦法復原。`)) return;
+
+    App.showLoading('合併標籤中…');
+    try {
+      let totalCount = 0;
+      for (const sourceId of sourceIds) {
+        totalCount += await EntryManager.mergeTag(sourceId, targetId);
+        await remove(sourceId);
+      }
+      selectedForBatch.clear();
+      renderModal();
+      App.toast(`已合併，共更新 ${totalCount} 篇日記 ✓`, 'success');
+    } catch (e) {
+      App.toast('合併失敗：' + e.message, 'error');
+    } finally {
+      App.hideLoading();
+    }
+  }
+
   // ── 匯入專用：取得或建立標籤（以預設顏色建立）──
   async function getOrCreate(name, parentId) {
     return await add(name, parentId || null, TAG_PALETTE[9]);
@@ -529,6 +573,6 @@ const TagManager = (() => {
 
   return {
     load, getAll, getFlat, getById, add, edit, remove, moveTag, renderModal, getOrCreate,
-    getNewTagColor, toggleBatchMode, batchDelete, batchMove,
+    getNewTagColor, toggleBatchMode, batchDelete, batchMove, batchMergeInto,
   };
 })();

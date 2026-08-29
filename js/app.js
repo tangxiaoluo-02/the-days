@@ -303,6 +303,10 @@ const App = (() => {
       const target = document.getElementById('tags-batch-move-target').value;
       TagManager.batchMove(target || null);
     });
+    document.getElementById('tags-batch-merge-btn').addEventListener('click', () => {
+      const target = document.getElementById('tags-batch-merge-target').value;
+      TagManager.batchMergeInto(target);
+    });
 
     // ── 統計 ──
     document.getElementById('stats-btn').addEventListener('click', () => {

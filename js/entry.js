@@ -367,6 +367,31 @@ const EntryManager = (() => {
     driveIdMap.delete(id);
   }
 
+  // ── 合併標籤：把所有貼著 sourceId 這個標籤的日記，改貼成 targetId ──
+  // 用在「匯入 Day One 之後發現同一件事有兩個標籤（例如『家人』跟『家庭』）」
+  // 這種情境，殿下自己決定合併方向、要留哪一個標籤（由呼叫端的 TagManager
+  // 決定合併完要不要刪掉 sourceId 這個標籤）。回傳實際改到的日記篇數。
+  async function mergeTag(sourceId, targetId) {
+    await ensureLoaded();
+    if (sourceId === targetId) return 0;
+    const affected = index.entries.filter(e => e.tags?.includes(sourceId));
+    let count = 0;
+    for (const summary of affected) {
+      try {
+        const entry = await getEntryFresh(summary.id);
+        const newTags = [...new Set((entry.tags || []).map(t => t === sourceId ? targetId : t))];
+        const updated = { ...entry, tags: newTags, updated_at: new Date().toISOString() };
+        await Drive.saveEntry(updated);
+        fullCache.set(summary.id, updated);
+        await patchIndexOnDrive(fresh => upsertSummaryInto(fresh, updated, summary.drive_file_id));
+        count++;
+      } catch (e) {
+        console.error('[合併標籤] 單篇失敗，略過繼續:', summary.id, e);
+      }
+    }
+    return count;
+  }
+
   // ── 取得完整日記（一般用途：檢視、複製匯出等，可接受些微過時以換取速度）──
   async function getEntry(id) {
     if (fullCache.has(id)) return fullCache.get(id);
@@ -531,5 +556,5 @@ const EntryManager = (() => {
     });
   }
 
-  return { load, create, update, remove, getEntry, getEntryFresh, getIndex, addEntry, addImportedPhotos, addImportedVideos, saveCurrentIndex, getDayMood, getAllDayMoods, setDayMood };
+  return { load, create, update, remove, mergeTag, getEntry, getEntryFresh, getIndex, addEntry, addImportedPhotos, addImportedVideos, saveCurrentIndex, getDayMood, getAllDayMoods, setDayMood };
 })();
