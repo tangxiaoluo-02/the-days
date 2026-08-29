@@ -21,6 +21,35 @@ function getMood(id) {
   return MOODS.find(m => m.id === id) || null;
 }
 
+// ── 標籤顏色色票（固定 16 色，取代任意選色盤）──
+// 每一色都是「夠深/夠飽和」的版本（同色系接近 Tailwind 的 600~700 色階），
+// 因為標籤文字直接使用這個顏色本身當文字色、背景只是淡淡的同色調（見
+// Editor.makeTagChip），淺色（尤其黃色系）當文字色在淺色背景上會難以辨識，
+// 這組色票裡刻意不收錄任何淺色，確保每一色當文字都夠清楚。
+const TAG_PALETTE = [
+  '#DC2626', '#EA580C', '#B45309', '#A16207',
+  '#4D7C0F', '#15803D', '#0F766E', '#0E7490',
+  '#0369A1', '#1D4ED8', '#4338CA', '#6D28D9',
+  '#7E22CE', '#A21CAF', '#BE185D', '#BE123C',
+];
+
+/** 找出色票裡跟給定顏色最接近的一個（RGB 歐式距離），用於把舊標籤的
+ *  自訂顏色自動校正成色票色，不用殿下手動一個個重新設定 */
+function nearestPaletteColor(hex) {
+  const toRgb = (h) => {
+    const n = parseInt(h.replace('#', ''), 16);
+    return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+  };
+  const [r, g, b] = toRgb(hex);
+  let best = TAG_PALETTE[0], bestDist = Infinity;
+  for (const c of TAG_PALETTE) {
+    const [cr, cg, cb] = toRgb(c);
+    const dist = (r - cr) ** 2 + (g - cg) ** 2 + (b - cb) ** 2;
+    if (dist < bestDist) { bestDist = dist; best = c; }
+  }
+  return best;
+}
+
 // ── 心情插畫（手繪墨線 + 不規則色塊）──
 const MOOD_BLOB_PATH = 'M50,7 C69,5 93,17 94,40 C95,61 83,87 57,93 C36,98 10,85 6,62 C2,40 15,14 36,9 C40,8 45,7.5 50,7 Z';
 const MOOD_INK = '#3B2A1E';

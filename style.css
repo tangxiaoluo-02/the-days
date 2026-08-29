@@ -1285,13 +1285,37 @@ svg.spark { width: 100%; height: 44px; display: block; }
   outline: none;
   font-size: 13px;
 }
-.tags-add-area input[type="color"] {
+/* ── 標籤顏色選擇器（固定色票，取代 input[type=color]）── */
+.tag-color-picker { position: relative; flex: none; }
+.tag-color-picker-trigger {
   width: 32px; height: 32px;
-  border: none;
-  border-radius: var(--radius-sm);
+  border: 2px solid var(--surface);
+  outline: 1px solid var(--border);
+  border-radius: 50%;
   cursor: pointer;
-  padding: 0;
 }
+.tag-color-picker-panel {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 50;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-lg);
+  padding: 8px;
+  display: grid;
+  grid-template-columns: repeat(4, 22px);
+  gap: 6px;
+}
+.tag-color-swatch {
+  width: 22px; height: 22px;
+  border-radius: 50%;
+  cursor: pointer;
+  border: 2px solid transparent;
+}
+.tag-color-swatch:hover { transform: scale(1.12); }
+.tag-color-swatch.active { border-color: var(--text); }
 #tags-tree { padding: 12px 20px; }
 .tag-group { margin-bottom: 4px; }
 .tag-tree-item {
@@ -1333,6 +1357,67 @@ svg.spark { width: 100%; height: 44px; display: block; }
 .tag-tree-actions button { font-size: 13px; padding: 2px 5px; border-radius: 4px; color: var(--text-3); }
 .tag-tree-actions button:hover { background: var(--border); color: var(--text); }
 .tag-tree-actions .del-btn:hover { color: var(--danger); }
+
+/* ── 拖曳排序 ── */
+.tag-drag-handle {
+  flex: none;
+  color: var(--text-3);
+  cursor: grab;
+  padding: 2px 4px;
+  touch-action: none; /* 讓拖曳手勢完全交給 JS 處理，不要被瀏覽器當成捲動 */
+  font-size: 15px;
+  line-height: 1;
+}
+.tag-drag-handle:hover { color: var(--text-2); }
+.tag-drag-source { opacity: 0.35; }
+.tag-drop-indicator { box-shadow: inset 0 2px 0 var(--primary); }
+.tag-drag-ghost {
+  position: fixed;
+  z-index: 400;
+  pointer-events: none;
+  background: var(--surface);
+  box-shadow: var(--shadow-lg);
+  border-radius: var(--radius-sm);
+  opacity: 0.95;
+}
+.tag-drag-ghost .tag-tree-actions { display: none; }
+
+/* ── 批次管理 ── */
+.tags-batch-toggle-btn {
+  font-size: 12px;
+  padding: 5px 12px;
+  border: 1px solid var(--border);
+  border-radius: 50px;
+  color: var(--text-2);
+  transition: all 0.15s;
+}
+.tags-batch-toggle-btn:hover { border-color: var(--accent); color: var(--primary); }
+.tags-batch-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 20px;
+  background: var(--surface-2);
+  border-bottom: 1px solid var(--border);
+  font-size: 13px;
+}
+.tags-batch-bar select {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 5px 8px;
+  background: var(--surface);
+  font-size: 13px;
+}
+.tags-batch-bar button {
+  padding: 5px 12px;
+  border-radius: 50px;
+  font-size: 13px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+}
+.tags-batch-delete-btn { color: var(--danger); border-color: var(--danger); }
+.tag-batch-checkbox { flex: none; width: 16px; height: 16px; cursor: pointer; }
+
 /* Inline 編輯 */
 .tag-item-editing { gap: 6px; }
 .tag-edit-name {
@@ -1342,13 +1427,6 @@ svg.spark { width: 100%; height: 44px; display: block; }
   padding: 3px 8px;
   font-size: 13px;
   outline: none;
-}
-.tag-edit-color {
-  width: 30px; height: 30px;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  padding: 0;
 }
 .tag-edit-save { color: var(--success); font-size: 16px; padding: 2px 6px; }
 .tag-edit-cancel { color: var(--danger); font-size: 16px; padding: 2px 6px; }
@@ -1519,6 +1597,13 @@ svg.spark { width: 100%; height: 44px; display: block; }
   color: var(--text-3);
   text-align: center;
 }
+.stp-caret {
+  flex: none;
+  font-size: 11px;
+  color: var(--text-3);
+  padding: 2px 4px;
+}
+.stp-caret:hover { color: var(--primary); }
 .stp-create {
   padding: 8px 12px;
   font-size: 13px;

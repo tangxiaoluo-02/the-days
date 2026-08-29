@@ -2,6 +2,7 @@
 const SmartTagPicker = (() => {
   let selectedIds = [];
   let onChangeCb  = null;
+  let collapsedParents = new Set(); // 目前收合的母標籤 id；沒有搜尋文字時，有子標籤的母標籤預設收合
 
   const getEl    = () => document.getElementById('smart-tag-picker');
   const getInput = () => document.getElementById('stp-input');
@@ -11,6 +12,10 @@ const SmartTagPicker = (() => {
   function open(anchorEl, currentTagIds, onChange) {
     selectedIds = [...(currentTagIds || [])];
     onChangeCb  = onChange;
+
+    // 每次開啟都重設成「有子標籤的母標籤全部收合」，避免標籤一多，選單一打開就是一長串
+    const flat = TagManager.getFlat();
+    collapsedParents = new Set(flat.filter(t => t._depth === 0 && flat.some(c => c.parent_id === t.id)).map(t => t.id));
 
     const picker = getEl();
     // 桌面：浮動在錨點下方
@@ -52,6 +57,9 @@ const SmartTagPicker = (() => {
       });
     } else {
       filtered = q ? flat.filter(t => t.name.toLowerCase().includes(q)) : flat;
+      // 沒有搜尋文字時，收合的母標籤底下的子標籤不顯示；有打字搜尋就不受收合狀態影響，
+      // 讓殿下可以直接篩出想要的標籤，不用先展開
+      if (!q) filtered = filtered.filter(t => t._depth === 0 || !collapsedParents.has(t.parent_id));
     }
 
     if (!filtered.length && !q) {
@@ -83,6 +91,22 @@ const SmartTagPicker = (() => {
       item.appendChild(check);
       item.appendChild(dot);
       item.appendChild(name);
+
+      // 有子標籤的母標籤，加一個展開/收合按鈕（不影響點整列選取這個標籤本身）
+      const hasChildren = tag._depth === 0 && flat.some(t => t.parent_id === tag.id);
+      if (hasChildren && !q) {
+        const caret = document.createElement('span');
+        caret.className = 'stp-caret';
+        caret.textContent = collapsedParents.has(tag.id) ? '▸' : '▾';
+        caret.addEventListener('mousedown', (e) => {
+          e.preventDefault();
+          e.stopPropagation(); // 不要連帶觸發選取這個標籤
+          if (collapsedParents.has(tag.id)) collapsedParents.delete(tag.id);
+          else collapsedParents.add(tag.id);
+          render(getInput().value);
+        });
+        item.appendChild(caret);
+      }
 
       item.addEventListener('mousedown', (e) => {
         e.preventDefault(); // 防止 input 失焦

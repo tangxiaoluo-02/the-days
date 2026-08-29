@@ -284,12 +284,24 @@ const App = (() => {
     document.getElementById('add-tag-submit-btn').addEventListener('click', async () => {
       const name   = document.getElementById('new-tag-name').value.trim();
       const parent = document.getElementById('new-tag-parent').value;
-      const color  = document.getElementById('new-tag-color').value;
+      const color  = TagManager.getNewTagColor();
       if (!name) { toast('請輸入標籤名稱', 'error'); return; }
       await TagManager.add(name, parent || null, color);
       document.getElementById('new-tag-name').value = '';
       TagManager.renderModal();
       toast('標籤已新增 ✓', 'success');
+    });
+
+    // ── 標籤批次管理 ──
+    document.getElementById('tags-batch-toggle-btn').addEventListener('click', () => {
+      TagManager.toggleBatchMode();
+    });
+    document.getElementById('tags-batch-delete-btn').addEventListener('click', () => {
+      TagManager.batchDelete();
+    });
+    document.getElementById('tags-batch-move-btn').addEventListener('click', () => {
+      const target = document.getElementById('tags-batch-move-target').value;
+      TagManager.batchMove(target || null);
     });
 
     // ── 統計 ──
