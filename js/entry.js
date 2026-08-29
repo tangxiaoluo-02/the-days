@@ -103,6 +103,9 @@ const EntryManager = (() => {
     const BUDGET = 120;
     let budget = BUDGET;
     let out = '';
+    // 目前有沒有一層文字顏色的 <span> 包著（殿下用文字顏色工具上色的段落，存起來是
+    // <span style="color:...">，不是普通 markdown 語法，要另外偵測才能在預覽裡保留顏色）
+    let colorOpen = false;
 
     const lines = content.replace(/\r\n/g, '\n').split('\n');
     for (let li = 0; li < lines.length && budget > 0; li++) {
@@ -133,8 +136,19 @@ const EntryManager = (() => {
           const take = m[1].slice(0, budget);
           lineOut += esc(take);
           budget -= take.length;
+        } else if ((m = rest.match(/^<span[^>]*\bstyle\s*=\s*"([^"]*)"[^>]*>/i))) {
+          // 只認顏色相關的 span，顏色值限定安全字元（不含引號/分號/角括號），
+          // 避免把使用者內文裡任意的 style 屬性原封不動塞進 innerHTML
+          const colorMatch = m[1].match(/color\s*:\s*([#a-zA-Z0-9(),.%\s]+)/i);
+          if (colorMatch) {
+            lineOut += `<span style="color:${colorMatch[1].trim()}">`;
+            colorOpen = true;
+          }
+        } else if (colorOpen && (m = rest.match(/^<\/span>/i))) {
+          lineOut += '</span>';
+          colorOpen = false;
         } else if ((m = rest.match(/^<[^>]+>/))) {
-          // 跳過 HTML 標籤本身，不計入字數預算
+          // 其他 HTML 標籤整個跳過，不計入字數預算
         } else {
           lineOut += esc(line[i]);
           budget -= 1;
@@ -146,6 +160,8 @@ const EntryManager = (() => {
 
       out += headingMatch ? `<strong>${lineOut}</strong>` : lineOut;
     }
+
+    if (colorOpen) out += '</span>'; // 顏色標籤被截斷／行尾還沒關閉時，補上收尾避免破損 HTML
 
     out = out.trim();
     if (budget <= 0) out += '…';
