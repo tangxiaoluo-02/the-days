@@ -4,25 +4,31 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>The Days</title>
-  <link rel="icon" href="icon.svg?v=20260829f" type="image/svg+xml">
-  <link rel="icon" href="icons/favicon-32.png?v=20260829f" sizes="32x32">
-  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png?v=20260829f">
-  <link rel="manifest" href="manifest.json?v=20260829f">
+  <link rel="icon" href="icon.svg?v=20260831a" type="image/svg+xml">
+  <link rel="icon" href="icons/favicon-32.png?v=20260831a" sizes="32x32">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png?v=20260831a">
+  <link rel="manifest" href="manifest.json?v=20260831a">
   <meta name="theme-color" content="#3FC7D6">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="apple-mobile-web-app-title" content="The Days">
-  <link rel="stylesheet" href="style.css?v=20260829f">
+  <link rel="stylesheet" href="style.css?v=20260831a">
   <link rel="stylesheet" href="https://uicdn.toast.com/editor/latest/toastui-editor.min.css">
   <link rel="stylesheet" href="https://uicdn.toast.com/tui-color-picker/latest/tui-color-picker.min.css">
   <link rel="stylesheet" href="https://uicdn.toast.com/editor-plugin-color-syntax/latest/toastui-editor-plugin-color-syntax.min.css">
 </head>
 <body>
 
+  <!-- ── 有新版本可用時的提示列（蓋在最上層，登入畫面/主畫面都看得到）── -->
+  <div id="update-banner" class="hidden">
+    <span>有新版本可以更新</span>
+    <button id="update-reload-btn">立即更新</button>
+  </div>
+
   <!-- ── 登入畫面 ── -->
   <div id="login-screen">
     <div class="login-box">
-      <img class="login-icon" src="icon.svg?v=20260829f" alt="The Days">
+      <img class="login-icon" src="icon.svg?v=20260831a" alt="The Days">
       <h1>The Days</h1>
       <p>你的私人日記空間</p>
       <button id="login-btn">以 Google 帳號登入</button>
@@ -35,7 +41,7 @@
     <!-- 側邊導航 -->
     <aside id="app-sidebar">
       <div class="brand">
-        <img class="app-logo" src="icon.svg?v=20260829f" alt="The Days">
+        <img class="app-logo" src="icon.svg?v=20260831a" alt="The Days">
         <span class="app-title">The Days</span>
       </div>
 
@@ -94,6 +100,11 @@
           <button id="import-btn" class="menu-item">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
             從 Day One 匯入
+          </button>
+          <div class="menu-divider"></div>
+          <button id="reload-app-btn" class="menu-item">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><polyline points="21 3 21 9 15 9"/></svg>
+            重新整理 App
           </button>
           <div class="menu-divider"></div>
           <button id="logout-btn" class="menu-item menu-item-danger">登出</button>
@@ -543,23 +554,23 @@
   <script src="https://uicdn.toast.com/editor/latest/toastui-editor-all.min.js"></script>
   <script src="https://uicdn.toast.com/editor/latest/i18n/zh-tw.min.js"></script>
   <script src="https://uicdn.toast.com/editor-plugin-color-syntax/latest/toastui-editor-plugin-color-syntax.min.js"></script>
-  <script src="js/config.js?v=20260829f"></script>
-  <script src="js/auth.js?v=20260829f"></script>
-  <script src="js/drive.js?v=20260829f"></script>
-  <script src="js/entry.js?v=20260829f"></script>
-  <script src="js/editor.js?v=20260829f"></script>
-  <script src="js/timeline.js?v=20260829f"></script>
-  <script src="js/calendar.js?v=20260829f"></script>
-  <script src="js/gallery.js?v=20260829f"></script>
-  <script src="js/tags.js?v=20260829f"></script>
-  <script src="js/smart-tag-picker.js?v=20260829f"></script>
-  <script src="js/search.js?v=20260829f"></script>
-  <script src="js/weather.js?v=20260829f"></script>
-  <script src="js/stats.js?v=20260829f"></script>
-  <script src="js/today.js?v=20260829f"></script>
-  <script src="js/time-tunnel.js?v=20260829f"></script>
-  <script src="js/import.js?v=20260829f"></script>
-  <script src="js/app.js?v=20260829f"></script>
+  <script src="js/config.js?v=20260831a"></script>
+  <script src="js/auth.js?v=20260831a"></script>
+  <script src="js/drive.js?v=20260831a"></script>
+  <script src="js/entry.js?v=20260831a"></script>
+  <script src="js/editor.js?v=20260831a"></script>
+  <script src="js/timeline.js?v=20260831a"></script>
+  <script src="js/calendar.js?v=20260831a"></script>
+  <script src="js/gallery.js?v=20260831a"></script>
+  <script src="js/tags.js?v=20260831a"></script>
+  <script src="js/smart-tag-picker.js?v=20260831a"></script>
+  <script src="js/search.js?v=20260831a"></script>
+  <script src="js/weather.js?v=20260831a"></script>
+  <script src="js/stats.js?v=20260831a"></script>
+  <script src="js/today.js?v=20260831a"></script>
+  <script src="js/time-tunnel.js?v=20260831a"></script>
+  <script src="js/import.js?v=20260831a"></script>
+  <script src="js/app.js?v=20260831a"></script>
 
 </body>
 </html>

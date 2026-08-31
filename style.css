@@ -44,6 +44,30 @@ a { color: var(--primary); }
 img { max-width: 100%; display: block; }
 .hidden { display: none !important; }
 
+/* ── 有新版本可更新的提示列（蓋在最上層，登入畫面/主畫面都在它下面）── */
+#update-banner {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: calc(10px + env(safe-area-inset-top)) 16px 10px;
+  background: var(--primary);
+  color: #fff;
+  font-size: 13px;
+  box-shadow: var(--shadow);
+}
+#update-banner button {
+  background: #fff;
+  color: var(--primary);
+  font-weight: 600;
+  font-size: 13px;
+  padding: 5px 14px;
+  border-radius: 999px;
+}
+
 /* ── 登入畫面 ── */
 #login-screen {
   display: flex;

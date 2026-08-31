@@ -23,6 +23,29 @@ const App = (() => {
     });
 
     bindEvents();
+    checkForUpdate();
+    document.addEventListener('visibilitychange', () => {
+      if (!document.hidden) checkForUpdate();
+    });
+  }
+
+  // ── 偵測有沒有新版本（手機「加到主畫面」模式沒有下拉重新整理，殿下重新
+  //    點開圖示時常常只是「恢復」舊分頁繼續跑，不會真的重新抓一次網頁，
+  //    導致改版後殿下一直卡在舊程式碼）。version.txt 用 no-store 強制略過
+  //    快取，永遠拿到 GitHub Pages 上最新的內容；跟這份程式碼自己知道的
+  //    APP_VERSION 不一樣，就代表現在跑的是舊版，跳出提示讓殿下自己選擇
+  //    要不要重新整理（不能自動重整，殿下可能正在寫日記寫到一半）。
+  let updateBannerShown = false;
+  async function checkForUpdate() {
+    if (updateBannerShown) return;
+    try {
+      const res = await fetch(`version.txt?_=${Date.now()}`, { cache: 'no-store' });
+      const latest = (await res.text()).trim();
+      if (latest && latest !== APP_VERSION) {
+        updateBannerShown = true;
+        document.getElementById('update-banner').classList.remove('hidden');
+      }
+    } catch (e) { /* 離線或網路問題，不用打擾殿下，下次還會再檢查 */ }
   }
 
   async function handleLogin(user) {
@@ -69,6 +92,14 @@ const App = (() => {
       document.getElementById('settings-menu').classList.add('hidden');
       if (confirm('確定要登出嗎？')) Auth.logout();
     });
+
+    // 重新整理 App（手機「加到主畫面」模式沒有瀏覽器的重新整理按鈕，
+    // 遇到卡住/疑似還在跑舊版程式碼時，這是唯一能強制重新載入的入口）
+    document.getElementById('reload-app-btn').addEventListener('click', () => {
+      document.getElementById('settings-menu').classList.add('hidden');
+      location.reload();
+    });
+    document.getElementById('update-reload-btn').addEventListener('click', () => location.reload());
 
     // 設定選單開關
     document.getElementById('settings-btn').addEventListener('click', (e) => {
