@@ -72,6 +72,9 @@ const Auth = (() => {
   // 帳號選擇彈窗、選完又跳第二次、最後整個分頁當機這個問題的關鍵。
   function requestToken() {
     if (_pendingRequest) return _pendingRequest;
+    // 記錄「發起當下」是不是悄悄續期——之後 _silentAttempt 可能會被別的呼叫改掉，
+    // 這裡先鎖住這次請求自己的身分，逾時秒數才不會被之後的狀態變化搞混
+    const isSilent = _silentAttempt;
     _pendingRequest = new Promise((resolve, reject) => {
       _pendingReject = reject;
       const origCallback = tokenClient.callback;
@@ -87,14 +90,16 @@ const Auth = (() => {
       };
       tokenClient.requestAccessToken({ prompt: '' });
 
-      // 保底逾時：手機 Safari 有時候會擋掉「不是使用者直接點擊觸發」的彈出視窗
-      // （例如頁面剛打開時的背景悄悄續期），這種情況下 Google 的 SDK 可能完全不會
-      // 呼叫 callback、也不會呼叫 error_callback，讓這個 promise 永遠卡在 pending。
-      // 殿下就會卡在「登入處理中，請稍候」動彈不得——因為手動點登入時發現已經有
-      // 一個請求在跑，只會跟著等同一個（早就卡死的）結果，永遠等不到。
-      // 20 秒是抓一個對真人互動彈出視窗（選帳號、輸入密碼）也夠用的寬限，逾時
-      // 就當作失敗處理，讓殿下能重新點擊再試一次，不會被卡死。
-      setTimeout(() => failPendingRequest(new Error('登入逾時，Google 服務沒有回應')), 20000);
+      // 保底逾時：手機 Safari 常常會直接擋掉「不是使用者直接點擊觸發」的彈出
+      // 視窗（例如頁面剛打開時的背景悄悄續期）——這種請求從一開始就沒有真人
+      // 手動點擊在背後撐腰，會被擋掉幾乎是常態而不是例外，Google 的 SDK 可能
+      // 完全不會呼叫 callback、也不會呼叫 error_callback，讓 promise 永遠卡住。
+      // 悄悄續期用短逾時（4秒）快速判定失敗、把請求槽讓出來，殿下接下來手動
+      // 點擊登入時才能立刻發起一個「真人剛點擊」撐腰的全新請求（成功機率高
+      //很多），不用傻傻卡著等一個一開始就注定被擋掉的舊請求；手動點擊觸發
+      // 的請求本身有真人撐腰、成功機率高，維持 20 秒給選帳號/輸入密碼的時間。
+      const timeoutMs = isSilent ? 4000 : 20000;
+      setTimeout(() => failPendingRequest(new Error('登入逾時，Google 服務沒有回應')), timeoutMs);
     });
     return _pendingRequest;
   }
@@ -134,10 +139,14 @@ const Auth = (() => {
     }
     if (_pendingRequest) {
       // 已經有一個請求在背景跑了（通常是頁面剛打開時的悄悄續期），跟著等同一個
-      // 結果就好，不要再另外開一個彈窗。這裡故意接一個空的 catch——失敗的話
-      // error_callback 自己已經跳過提示了，這裡不用重複顯示
+      // 結果就好，不要再另外開一個彈窗互相打架
+      const wasSilent = _silentAttempt; // 記錄殿下點下去那一刻，卡著的是不是悄悄續期
       App.toast('登入處理中，請稍候…', '');
-      await _pendingRequest.catch(() => {});
+      const ok = await _pendingRequest.then(() => true).catch(() => false);
+      // 悄悄續期失敗時 failPendingRequest() 刻意不跳錯誤提示（避免殿下平常沒點
+      // 登入也被打擾），但這裡殿下明明手動點了、也真的在等，不能讓畫面就這樣
+      // 靜悄悄沒有下文，要告訴殿下該再點一次
+      if (!ok && wasSilent) App.toast('請再點一次「登入」', '');
       return;
     }
     requestToken().catch(() => {});

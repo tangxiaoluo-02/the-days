@@ -88,6 +88,7 @@ const App = (() => {
 
     // 登入 / 登出
     document.getElementById('login-btn').addEventListener('click', () => Auth.login());
+    document.getElementById('login-reload-btn').addEventListener('click', () => location.reload());
     document.getElementById('logout-btn').addEventListener('click', () => {
       document.getElementById('settings-menu').classList.add('hidden');
       if (confirm('確定要登出嗎？')) Auth.logout();

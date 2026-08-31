@@ -101,6 +101,13 @@ img { max-width: 100%; display: block; }
   transition: background 0.2s;
 }
 #login-btn:hover { background: var(--primary-h); }
+.login-reload-btn {
+  display: block;
+  margin: 16px auto 0;
+  color: var(--text-3);
+  font-size: 12px;
+  text-decoration: underline;
+}
 
 /* ── 側邊導航 ── */
 #app-sidebar {
