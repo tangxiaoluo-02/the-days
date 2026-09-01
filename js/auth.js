@@ -5,7 +5,6 @@ const Auth = (() => {
   let tokenExpiry  = 0;
   let onLoginCb    = null;
   let onLogoutCb   = null;
-  let _silentAttempt  = false; // 是否正在「悄悄續期」，用來決定失敗時要不要跳錯誤提示
   let _pendingRequest = null;  // 目前有沒有一個「跟 Google 要權杖」的請求正在跑（大家共用同一個）
   let _pendingReject  = null;  // 配合 _pendingRequest，讓 error_callback 也能讓對應的 promise 正確結束
                                 // （不然請求失敗時 promise 會永遠卡著，呼叫端會整個掛住不動）
@@ -38,15 +37,16 @@ const Auth = (() => {
           accessToken = token;
           tokenExpiry = expiry;
           onLoginCb && onLoginCb(user);
-          return;
         }
-        // Google 存取權杖大約 1 小時就會過期（這個 App 沒有後端伺服器保管
-        // refresh token，只能拿到短效的 access token，這是 Google 這種
-        // 純前端登入方式的硬性限制）。過期了不代表殿下真的登出了，先悄悄
-        // 試著在背景重新要一次權杖，瀏覽器裡如果還留著 Google 的登入狀態，
-        // 通常不需要殿下再手動點一次「登入」。
-        _silentAttempt = true;
-        requestToken().catch(() => {}); // 失敗的話 error_callback 已經處理過了，這裡不用重複反應
+        // 過期了就不主動做任何事，直接停在登入畫面讓殿下自己點「登入」。
+        // 這裡原本會在背景悄悄試著續期一次，省得殿下手動登入——但手機瀏覽器
+        // （尤其 iOS Safari「加到主畫面」模式）幾乎都會擋掉這種沒有使用者
+        // 手動點擊撐腰的彈出視窗請求，實測下來還是常常讓殿下卡在「登入處理
+        // 中」，就算加了逾時保底也還是常態性卡住。殿下確認過寧可每次都手動
+        // 點一次登入，也不要再遇到卡住問題——不主動嘗試，殿下的每一次「登入」
+        // 點擊都會是唯一、乾淨、有真人手勢撐腰的請求，不會跟任何背景請求
+        // 搶著跳出彈窗或卡在等一個不知道會不會成功的舊請求，這是目前這個
+        // 純前端（無後端保管 refresh token）架構下最不容易卡住的做法。
       }
     };
     tryInit();
@@ -54,27 +54,20 @@ const Auth = (() => {
 
   // 讓目前正在等待「跟 Google 要權杖」的呼叫端統一收到失敗結果——不管觸發來源是
   // Google 的 error_callback，還是下面 requestToken() 自己的逾時保底，都共用這一個
-  // 出口，確保只會真正 reject 一次，也確保「悄悄續期」失敗時不會多跳一次錯誤提示。
+  // 出口，確保只會真正 reject 一次。
   function failPendingRequest(err) {
     if (!_pendingReject) return; // 已經結束過一次了（例如已經被逾時保底處理掉）
     const reject = _pendingReject;
     _pendingRequest = null;
     _pendingReject  = null;
-    // 悄悄續期失敗時不要跳錯誤提示，讓使用者安靜地看到登入畫面就好
-    if (!_silentAttempt) App.toast('登入逾時或失敗，請再點一次「登入」重試', 'error');
-    _silentAttempt = false;
+    App.toast('登入逾時或失敗，請再點一次「登入」重試', 'error');
     reject(err);
   }
 
   // 統一的「跟 Google 要一次權杖」入口——同一時間只允許一個請求在跑，其他呼叫者
   // 直接跟著等同一個結果，不會各自另外開一個彈窗互相打架。
-  // 這是解決「頁面剛打開時背景悄悄續期」跟「殿下手動點登入」同時搶著跳出 Google
-  // 帳號選擇彈窗、選完又跳第二次、最後整個分頁當機這個問題的關鍵。
   function requestToken() {
     if (_pendingRequest) return _pendingRequest;
-    // 記錄「發起當下」是不是悄悄續期——之後 _silentAttempt 可能會被別的呼叫改掉，
-    // 這裡先鎖住這次請求自己的身分，逾時秒數才不會被之後的狀態變化搞混
-    const isSilent = _silentAttempt;
     _pendingRequest = new Promise((resolve, reject) => {
       _pendingReject = reject;
       const origCallback = tokenClient.callback;
@@ -90,22 +83,16 @@ const Auth = (() => {
       };
       tokenClient.requestAccessToken({ prompt: '' });
 
-      // 保底逾時：手機 Safari 常常會直接擋掉「不是使用者直接點擊觸發」的彈出
-      // 視窗（例如頁面剛打開時的背景悄悄續期）——這種請求從一開始就沒有真人
-      // 手動點擊在背後撐腰，會被擋掉幾乎是常態而不是例外，Google 的 SDK 可能
-      // 完全不會呼叫 callback、也不會呼叫 error_callback，讓 promise 永遠卡住。
-      // 悄悄續期用短逾時（4秒）快速判定失敗、把請求槽讓出來，殿下接下來手動
-      // 點擊登入時才能立刻發起一個「真人剛點擊」撐腰的全新請求（成功機率高
-      //很多），不用傻傻卡著等一個一開始就注定被擋掉的舊請求；手動點擊觸發
-      // 的請求本身有真人撐腰、成功機率高，維持 20 秒給選帳號/輸入密碼的時間。
-      const timeoutMs = isSilent ? 4000 : 20000;
-      setTimeout(() => failPendingRequest(new Error('登入逾時，Google 服務沒有回應')), timeoutMs);
+      // 保底逾時：Google 的 SDK 偶爾會完全不呼叫 callback、也不呼叫
+      // error_callback，讓這個 promise 永遠卡在 pending。20 秒是給真人選
+      // 帳號/輸入密碼留的合理寬限，逾時就當作失敗處理，讓殿下能重新點擊
+      // 再試一次，不會被卡死。
+      setTimeout(() => failPendingRequest(new Error('登入逾時，Google 服務沒有回應')), 20000);
     });
     return _pendingRequest;
   }
 
   function handleTokenResponse(resp) {
-    _silentAttempt = false;
     if (resp.error) return;
     accessToken = resp.access_token;
     tokenExpiry = Date.now() + (resp.expires_in - 60) * 1000;
@@ -138,15 +125,10 @@ const Auth = (() => {
       }
     }
     if (_pendingRequest) {
-      // 已經有一個請求在背景跑了（通常是頁面剛打開時的悄悄續期），跟著等同一個
-      // 結果就好，不要再另外開一個彈窗互相打架
-      const wasSilent = _silentAttempt; // 記錄殿下點下去那一刻，卡著的是不是悄悄續期
+      // 已經有一個請求在跑了（例如殿下連續點了兩次），跟著等同一個結果就好，
+      // 不要再另外開一個彈窗互相打架
       App.toast('登入處理中，請稍候…', '');
-      const ok = await _pendingRequest.then(() => true).catch(() => false);
-      // 悄悄續期失敗時 failPendingRequest() 刻意不跳錯誤提示（避免殿下平常沒點
-      // 登入也被打擾），但這裡殿下明明手動點了、也真的在等，不能讓畫面就這樣
-      // 靜悄悄沒有下文，要告訴殿下該再點一次
-      if (!ok && wasSilent) App.toast('請再點一次「登入」', '');
+      await _pendingRequest.catch(() => {});
       return;
     }
     requestToken().catch(() => {});
@@ -177,7 +159,8 @@ const Auth = (() => {
   async function getToken() {
     if (!accessToken || Date.now() >= tokenExpiry) {
       // Token 過期，靜默刷新——一樣透過共用的 requestToken()，避免跟其他地方的
-      // 請求互相打架
+      // 請求互相打架。這裡是「已經登入過、寫日記寫到一半權杖過期」的情境，
+      // 跟 init() 那個「一開始就過期」的情境不同，維持原本的自動重試不變。
       const saved = localStorage.getItem('td_token');
       if (saved) {
         const { expiry } = JSON.parse(saved);

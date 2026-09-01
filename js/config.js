@@ -8,7 +8,7 @@ const CONFIG = {
 // ── 目前這份程式碼的版本號（每次發布都要跟 index.html 裡的 ?v= 一起更新，
 //    也要跟 version.txt 內容一致——App.checkForUpdate() 靠比對這兩個值，
 //    偵測「手機加到主畫面」的舊分頁還在跑改版前的程式碼，跳出更新提示）
-const APP_VERSION = '20260831b';
+const APP_VERSION = '20260901a';
 
 // ── 心情選項（手繪插畫，不用系統表情符號）──
 const MOODS = [
