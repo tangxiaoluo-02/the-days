@@ -820,6 +820,12 @@ svg.spark { width: 100%; height: 44px; display: block; }
   background: var(--surface-2);
   border-bottom: 1px solid var(--border);
 }
+/* Toast UI Editor 內建 <480px 版型會把彈出選單（標題層級等）margin-left:-150px 置中，
+   但我們的標題按鈕排在工具列最左邊，手機直式（寬度多半<480px）會被整個推出畫面外，
+   橫式因為寬度通常>480px、這條規則不生效才看得到——蓋掉這條規則即可。 */
+#entry-editor .toastui-editor-popup {
+  margin-left: 0 !important;
+}
 #entry-editor .ProseMirror {
   padding: 16px 20px !important;
   font-size: 15px;

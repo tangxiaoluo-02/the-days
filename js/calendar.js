@@ -17,8 +17,8 @@ const Calendar = (() => {
 
     title.textContent = `${currentYear} 年 ${currentMonth + 1} 月`;
 
-    // 星期標題
-    const weekdays = ['日', '一', '二', '三', '四', '五', '六'];
+    // 星期標題（週一為一週第一天）
+    const weekdays = ['一', '二', '三', '四', '五', '六', '日'];
     for (const wd of weekdays) {
       const cell = document.createElement('div');
       cell.className = 'cal-weekday';
@@ -26,8 +26,8 @@ const Calendar = (() => {
       grid.appendChild(cell);
     }
 
-    // 計算當月天數與起始星期
-    const firstDay = new Date(currentYear, currentMonth, 1).getDay();
+    // 計算當月天數與起始星期（getDay() 0=週日..6=週六，轉換成 0=週一..6=週日）
+    const firstDay = (new Date(currentYear, currentMonth, 1).getDay() + 6) % 7;
     const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
     const prevMonthDays = new Date(currentYear, currentMonth, 0).getDate();
 
